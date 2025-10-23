@@ -49,14 +49,20 @@ curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -bash -
 sudo apt-get install -y nodejs
 ```
 
-### 3. Clone and Install
+### 3. Clone the Repository
 
 ```bash
-cd /path/to/beatnik-bleno
+git clone https://github.com/byrdsandbytes/beatnik-bleno.git
+cd beatnik-bleno
+```
+
+### 4. Install Dependencies
+
+```bash
 npm install
 ```
 
-### 4. Build TypeScript
+### 5. Build TypeScript
 
 ```bash
 npm run build
@@ -64,15 +70,7 @@ npm run build
 
 This compiles TypeScript to JavaScript in the `dist/` folder.
 
-### 4. Build TypeScript
-
-```bash
-npm run build
-```
-
-This compiles TypeScript to JavaScript in the `dist/` folder.
-
-### 5. Grant Bluetooth Permissions (Linux)
+### 6. Grant Bluetooth Permissions (Linux)
 
 To run without sudo:
 
