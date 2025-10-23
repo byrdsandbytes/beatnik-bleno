@@ -2,8 +2,8 @@ import { injectable } from 'tsyringe';
 import { EventEmitter } from 'events';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
-import { WiFiCredentials, WiFiStatus, Platform } from '@models/wifi.model';
-import { CONFIG } from '@config/app.config';
+import { WiFiCredentials, WiFiStatus, Platform } from '../models/wifi.model';
+import { CONFIG } from '../config/app.config';
 
 /**
  * WiFi Manager Service
