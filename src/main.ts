@@ -1,14 +1,14 @@
 import 'reflect-metadata';
 import * as bleno from '@abandonware/bleno';
 import { container } from 'tsyringe';
-import { WiFiManagerService } from '@services/wifi-manager.service';
+import { WiFiManagerService } from './services/wifi-manager.service';
 import {
   SsidCharacteristic,
   PasswordCharacteristic,
   ConnectCharacteristic,
   StatusCharacteristic,
-} from '@characteristics/base.characteristic';
-import { CONFIG } from '@config/app.config';
+} from './characteristics/base.characteristic';
+import { CONFIG } from './config/app.config';
 
 /**
  * Application Bootstrap Class

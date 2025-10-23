@@ -1,7 +1,7 @@
 import * as bleno from '@abandonware/bleno';
 import { injectable, inject } from 'tsyringe';
-import { WiFiManagerService } from '@services/wifi-manager.service';
-import { CONFIG } from '@config/app.config';
+import { WiFiManagerService } from '../services/wifi-manager.service';
+import { CONFIG } from '../config/app.config';
 
 /**
  * Base Characteristic Class
