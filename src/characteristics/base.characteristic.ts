@@ -8,7 +8,7 @@ import { CONFIG } from '@config/app.config';
  * Provides common functionality for all characteristics
  */
 export abstract class BaseCharacteristic extends bleno.Characteristic {
-  constructor(uuid: string, properties: string[], description: string) {
+  constructor(uuid: string, properties: ("read" | "write" | "writeWithoutResponse" | "notify" | "indicate")[], description: string) {
     super({
       uuid,
       properties,
@@ -41,7 +41,7 @@ export abstract class BaseCharacteristic extends bleno.Characteristic {
 export class SsidCharacteristic extends BaseCharacteristic {
   private ssid: string = '';
 
-  constructor(@inject('WiFiManagerService') private wifiManager: WiFiManagerService) {
+  constructor() {
     super(CONFIG.characteristics.ssidUuid, ['write', 'writeWithoutResponse'], 'Wi-Fi SSID');
   }
 
@@ -51,7 +51,7 @@ export class SsidCharacteristic extends BaseCharacteristic {
   onWriteRequest(
     data: Buffer,
     offset: number,
-    withoutResponse: boolean,
+    _withoutResponse: boolean,
     callback: (result: number) => void
   ): void {
     if (this.handleOffset(offset, callback)) {
@@ -59,7 +59,7 @@ export class SsidCharacteristic extends BaseCharacteristic {
     }
 
     this.ssid = data.toString('utf8');
-    console.log(`📡 SSID set to: ${this.ssid}`);
+    console.log(`SSID set to: ${this.ssid}`);
 
     callback(this.RESULT_SUCCESS);
   }
@@ -77,7 +77,7 @@ export class SsidCharacteristic extends BaseCharacteristic {
 export class PasswordCharacteristic extends BaseCharacteristic {
   private password: string = '';
 
-  constructor(@inject('WiFiManagerService') private wifiManager: WiFiManagerService) {
+  constructor() {
     super(
       CONFIG.characteristics.passwordUuid,
       ['write', 'writeWithoutResponse'],
@@ -91,7 +91,7 @@ export class PasswordCharacteristic extends BaseCharacteristic {
   onWriteRequest(
     data: Buffer,
     offset: number,
-    withoutResponse: boolean,
+    _withoutResponse: boolean,
     callback: (result: number) => void
   ): void {
     if (this.handleOffset(offset, callback)) {
@@ -99,7 +99,7 @@ export class PasswordCharacteristic extends BaseCharacteristic {
     }
 
     this.password = data.toString('utf8');
-    console.log(`🔐 Password set (${this.password.length} characters)`);
+    console.log(`Password set (${this.password.length} characters)`);
 
     callback(this.RESULT_SUCCESS);
   }
@@ -133,7 +133,7 @@ export class ConnectCharacteristic extends BaseCharacteristic {
   onWriteRequest(
     data: Buffer,
     offset: number,
-    withoutResponse: boolean,
+    _withoutResponse: boolean,
     callback: (result: number) => void
   ): void {
     if (this.handleOffset(offset, callback)) {
@@ -146,12 +146,12 @@ export class ConnectCharacteristic extends BaseCharacteristic {
       const ssid = this.ssidChar.getSSID();
       const password = this.passwordChar.getPassword();
 
-      console.log('\n🔄 Connection request received!');
+      console.log('\nConnection request received!');
       console.log(`   SSID: ${ssid}`);
       console.log(`   Password: ${'*'.repeat(password.length)}`);
 
       if (!ssid) {
-        console.error('❌ Error: SSID not set');
+        console.error('Error: SSID not set');
         callback(this.RESULT_UNLIKELY_ERROR);
         return;
       }
@@ -160,11 +160,11 @@ export class ConnectCharacteristic extends BaseCharacteristic {
       this.wifiManager
         .connect({ ssid, password })
         .then(() => {
-          console.log('✅ Successfully connected to WiFi!');
+          console.log('Successfully connected to WiFi!');
           callback(this.RESULT_SUCCESS);
         })
-        .catch((err) => {
-          console.error('❌ WiFi connection failed:', err.message);
+        .catch((err: any) => {
+          console.error('WiFi connection failed:', err.message);
           callback(this.RESULT_UNLIKELY_ERROR);
         });
     } else {
@@ -214,8 +214,8 @@ export class StatusCharacteristic extends BaseCharacteristic {
   /**
    * Called when a client subscribes to notifications
    */
-  onSubscribe(maxValueSize: number, updateValueCallback: (data: Buffer) => void): void {
-    console.log('📱 Client subscribed to status notifications');
+  onSubscribe(_maxValueSize: number, updateValueCallback: (data: Buffer) => void): void {
+    console.log('Client subscribed to status notifications');
     this.updateValueCallback = updateValueCallback;
   }
 

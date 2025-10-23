@@ -15,7 +15,7 @@ import { CONFIG } from '@config/app.config';
  * Similar to Angular's main.ts and AppModule pattern
  */
 class BeatnikApplication {
-  private wifiManager!: WiFiManagerService;
+  // private wifiManager!: WiFiManagerService;
   private ssidChar!: SsidCharacteristic;
   private passwordChar!: PasswordCharacteristic;
   private connectChar!: ConnectCharacteristic;
@@ -45,7 +45,7 @@ class BeatnikApplication {
    * Initialize services and resolve dependencies
    */
   private initializeServices(): void {
-    this.wifiManager = container.resolve(WiFiManagerService);
+  // this.wifiManager = container.resolve(WiFiManagerService);
     this.ssidChar = container.resolve(SsidCharacteristic);
     this.passwordChar = container.resolve(PasswordCharacteristic);
     this.connectChar = container.resolve(ConnectCharacteristic);
@@ -74,7 +74,7 @@ class BeatnikApplication {
     });
 
     // Handle advertising start
-    bleno.on('advertisingStart', (error: Error | null) => {
+    bleno.on('advertisingStart', (error: any) => {
       this.onAdvertisingStart(error);
     });
 
