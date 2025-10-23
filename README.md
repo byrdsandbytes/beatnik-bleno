@@ -4,17 +4,17 @@ A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi and othe
 
 ## Features
 
-- 🔵 **BLE WiFi Provisioning** - Configure WiFi without needing physical access
-- 📡 **Four BLE Characteristics**:
+- **BLE WiFi Provisioning** - Configure WiFi without needing physical access
+- **Four BLE Characteristics**:
   - SSID input
   - Password input
   - Connection trigger
   - Status monitoring (with notifications)
-- ✅ **Cross-platform** - Works on Linux (Raspberry Pi) and macOS (for testing)
-- 🔐 **Secure** - Credentials are transmitted over BLE (ensure you use BLE security features in production)
-- 💎 **TypeScript** - Fully typed with Angular-style architecture
-- 🎯 **Dependency Injection** - Using tsyringe for clean, testable code
-- 🏗️ **Service-based Architecture** - Familiar patterns for Angular developers
+- **Cross-platform** - Works on Linux (Raspberry Pi) and macOS (for testing)
+- **Secure** - Credentials are transmitted over BLE (ensure you use BLE security features in production)
+- **TypeScript** - Fully typed with Angular-style architecture
+- **Dependency Injection** - Using tsyringe for clean, testable code
+- **Service-based Architecture** - Familiar patterns for Angular developers
 
 ## Prerequisites
 
@@ -127,20 +127,20 @@ sudo npm start
 You should see output like:
 
 ```
-🚀 Starting Beatnik WiFi Provisioning Service...
+Starting Beatnik WiFi Provisioning Service...
 
-📶 Bluetooth adapter state: poweredOn
+Bluetooth adapter state: poweredOn
 
-✅ Advertising as "beatnik"
+Advertising as "beatnik"
    Service UUID: 6E400001B5A3F393E0A9E50E24DCCA9E
 
-📋 Available characteristics:
+Available characteristics:
    • SSID:     6E400002B5A3F393E0A9E50E24DCCA9E
    • Password: 6E400003B5A3F393E0A9E50E24DCCA9E
    • Connect:  6E400004B5A3F393E0A9E50E24DCCA9E
    • Status:   6E400005B5A3F393E0A9E50E24DCCA9E
 
-💡 Waiting for client connection...
+Waiting for client connection...
 ```
 
 ### Connect from a BLE Client
@@ -381,7 +381,7 @@ container.register('MyCustomCharacteristic', { useClass: MyCustomCharacteristic 
 
 ## Security Considerations
 
-⚠️ **Important for Production:**
+**Important for Production:**
 
 - This example transmits credentials in plain text over BLE
 - Use BLE pairing and encryption for production
