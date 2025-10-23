@@ -1,5 +1,7 @@
 import 'reflect-metadata';
-import * as bleno from '@abandonware/bleno';
+// Use require for CommonJS compatibility with bleno
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const bleno = require('@abandonware/bleno');
 import { container } from 'tsyringe';
 import { WiFiManagerService } from './services/wifi-manager.service';
 import {
@@ -99,7 +101,7 @@ class BeatnikApplication {
       bleno.startAdvertising(
         CONFIG.bluetooth.deviceName,
         [CONFIG.bluetooth.serviceUuid],
-        (error) => {
+        (error: any) => {
           if (error) {
             console.error('❌ Error starting advertising:', error);
           }
@@ -147,7 +149,7 @@ class BeatnikApplication {
       ],
     });
 
-    bleno.setServices([primaryService], (error) => {
+    bleno.setServices([primaryService], (error: any) => {
       if (error) {
         console.error('❌ Error setting services:', error);
       } else {
