@@ -1,4 +1,6 @@
-import * as bleno from '@abandonware/bleno';
+// Use require for CommonJS compatibility with bleno
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const bleno = require('@abandonware/bleno');
 import { injectable, inject } from 'tsyringe';
 import { WiFiManagerService } from '../services/wifi-manager.service';
 import { CONFIG } from '../config/app.config';

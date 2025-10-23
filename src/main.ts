@@ -140,10 +140,10 @@ class BeatnikApplication {
     const primaryService = new bleno.PrimaryService({
       uuid: CONFIG.bluetooth.serviceUuid,
       characteristics: [
-        this.ssidChar,
-        this.passwordChar,
-        this.connectChar,
-        this.statusChar,
+        this.ssidChar as any,
+        this.passwordChar as any,
+        this.connectChar as any,
+        this.statusChar as any,
       ],
     });
 
