@@ -58,12 +58,12 @@ class BeatnikApplication {
    * Bootstrap the application
    */
   public async bootstrap(): Promise<void> {
-    console.log('🚀 Starting Beatnik WiFi Provisioning Service...\n');
+  console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
 
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
 
-    console.log('💡 Press Ctrl+C to stop the service.\n');
+  console.log('💡 Press Ctrl+C to stop the service.\n');
   }
 
   /**
@@ -95,7 +95,7 @@ class BeatnikApplication {
    * Handle Bluetooth state changes
    */
   private onStateChange(state: string): void {
-    console.log(`📶 Bluetooth adapter state: ${state}`);
+  console.log(`ℹ️  Bluetooth adapter state: ${state}`);
 
     if (state === 'poweredOn') {
       bleno.startAdvertising(
@@ -103,12 +103,12 @@ class BeatnikApplication {
         [CONFIG.bluetooth.serviceUuid],
         (error: any) => {
           if (error) {
-            console.error('❌ Error starting advertising:', error);
+            console.error('🛑 Error starting advertising:', error);
           }
         }
       );
     } else {
-      console.log('⚠️  Bluetooth not ready, stopping advertising...');
+  console.log('⚠️  Bluetooth not ready, stopping advertising...');
       bleno.stopAdvertising();
     }
   }
@@ -118,11 +118,11 @@ class BeatnikApplication {
    */
   private onAdvertisingStart(error: Error | null): void {
     if (error) {
-      console.error('❌ Error on advertising start:', error);
+      console.error('🛑 Error on advertising start:', error);
       return;
     }
 
-    console.log(`\n✅ Advertising as "${CONFIG.bluetooth.deviceName}"`);
+    console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
     console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
     console.log('\n📋 Available characteristics:');
     console.log(`   • SSID:     ${CONFIG.characteristics.ssidUuid}`);
@@ -151,9 +151,9 @@ class BeatnikApplication {
 
     bleno.setServices([primaryService], (error: any) => {
       if (error) {
-        console.error('❌ Error setting services:', error);
+        console.error('🛑 Error setting services:', error);
       } else {
-        console.log('✅ Services configured successfully.');
+        console.log('🥦 Services configured successfully.');
       }
     });
   }
