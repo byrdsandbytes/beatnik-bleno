@@ -17,53 +17,18 @@ import { CONFIG } from './config/app.config';
  * Similar to Angular's main.ts and AppModule pattern
  */
 class BeatnikApplication {
-  // private wifiManager!: WiFiManagerService;
-  private ssidChar!: SsidCharacteristic;
-  private passwordChar!: PasswordCharacteristic;
-  private connectChar!: ConnectCharacteristic;
-  private statusChar!: StatusCharacteristic;
-
-  constructor() {
-    this.setupDependencyInjection();
-    this.initializeServices();
-  }
-
-  /**
-   * Setup Dependency Injection Container
-   * Similar to Angular's providers array
-   */
-  private setupDependencyInjection(): void {
-    // Register services
-    container.registerSingleton('WiFiManagerService', WiFiManagerService);
-    
-    // Register characteristics
-    container.register('SsidCharacteristic', { useClass: SsidCharacteristic });
-    container.register('PasswordCharacteristic', { useClass: PasswordCharacteristic });
-    container.register('ConnectCharacteristic', { useClass: ConnectCharacteristic });
-    container.register('StatusCharacteristic', { useClass: StatusCharacteristic });
-  }
-
-  /**
-   * Initialize services and resolve dependencies
-   */
-  private initializeServices(): void {
-  // this.wifiManager = container.resolve(WiFiManagerService);
-    this.ssidChar = container.resolve(SsidCharacteristic);
-    this.passwordChar = container.resolve(PasswordCharacteristic);
-    this.connectChar = container.resolve(ConnectCharacteristic);
-    this.statusChar = container.resolve(StatusCharacteristic);
-  }
+  constructor() {}
 
   /**
    * Bootstrap the application
    */
   public async bootstrap(): Promise<void> {
-  console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
+    console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
 
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
 
-  console.log('💡 Press Ctrl+C to stop the service.\n');
+    console.log('💡 Press Ctrl+C to stop the service.\n');
   }
 
   /**
@@ -95,7 +60,7 @@ class BeatnikApplication {
    * Handle Bluetooth state changes
    */
   private onStateChange(state: string): void {
-  console.log(`ℹ️  Bluetooth adapter state: ${state}`);
+    console.log(`ℹ️  Bluetooth adapter state: ${state}`);
 
     if (state === 'poweredOn') {
       bleno.startAdvertising(
@@ -108,7 +73,7 @@ class BeatnikApplication {
         }
       );
     } else {
-  console.log('⚠️  Bluetooth not ready, stopping advertising...');
+      console.log('⚠️  Bluetooth not ready, stopping advertising...');
       bleno.stopAdvertising();
     }
   }
@@ -131,22 +96,33 @@ class BeatnikApplication {
     console.log(`   • Status:   ${CONFIG.characteristics.statusUuid}`);
     console.log('\n💡 Waiting for client connection...\n');
 
+    // Create a new child container for this session to ensure fresh instances
+    const sessionContainer = container.createChildContainer();
+
+    // Register services and characteristics as singletons FOR THIS SESSION
+    sessionContainer.registerSingleton(WiFiManagerService);
+    sessionContainer.registerSingleton(SsidCharacteristic);
+    sessionContainer.registerSingleton(PasswordCharacteristic);
+    sessionContainer.registerSingleton(ConnectCharacteristic);
+    sessionContainer.registerSingleton(StatusCharacteristic);
+
+    // Resolve instances from the session container
+    const ssidChar = sessionContainer.resolve(SsidCharacteristic);
+    const passwordChar = sessionContainer.resolve(PasswordCharacteristic);
+    const connectChar = sessionContainer.resolve(ConnectCharacteristic);
+    const statusChar = sessionContainer.resolve(StatusCharacteristic);
+
     // Create and set services
-    this.setupServices();
+    this.setupServices([ssidChar, passwordChar, connectChar, statusChar]);
   }
 
   /**
    * Setup BLE services and characteristics
    */
-  private setupServices(): void {
+  private setupServices(characteristics: any[]): void {
     const primaryService = new bleno.PrimaryService({
       uuid: CONFIG.bluetooth.serviceUuid,
-      characteristics: [
-        this.ssidChar as any,
-        this.passwordChar as any,
-        this.connectChar as any,
-        this.statusChar as any,
-      ],
+      characteristics: characteristics,
     });
 
     bleno.setServices([primaryService], (error: any) => {
