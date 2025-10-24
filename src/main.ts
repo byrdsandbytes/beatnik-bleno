@@ -100,11 +100,11 @@ class BeatnikApplication {
     const sessionContainer = container.createChildContainer();
 
     // Register services and characteristics as singletons FOR THIS SESSION
-    sessionContainer.registerSingleton(WiFiManagerService);
-    sessionContainer.registerSingleton(SsidCharacteristic);
-    sessionContainer.registerSingleton(PasswordCharacteristic);
-    sessionContainer.registerSingleton(ConnectCharacteristic);
-    sessionContainer.registerSingleton(StatusCharacteristic);
+    sessionContainer.registerSingleton('WiFiManagerService', WiFiManagerService);
+    sessionContainer.registerSingleton('SsidCharacteristic', SsidCharacteristic);
+    sessionContainer.registerSingleton('PasswordCharacteristic', PasswordCharacteristic);
+    sessionContainer.registerSingleton('ConnectCharacteristic', ConnectCharacteristic);
+    sessionContainer.registerSingleton('StatusCharacteristic', StatusCharacteristic);
 
     // Resolve instances from the session container
     const ssidChar = sessionContainer.resolve(SsidCharacteristic);
