@@ -48,9 +48,14 @@ It's recommended to use [nvm](https://github.com/nvm-sh/nvm) (Node Version Manag
 
 **a. Install nvm**
 ```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 ```
-After installation, you'll need to restart your terminal or source the nvm script (e.g., `source ~/.nvm/nvm.sh`).
+After installation, add the following lines to your shell's startup script (e.g., `~/.zshrc`, `~/.bashrc`) to source nvm on startup.
+
+```bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use # This loads nvm, without auto-using the default version
+```
 
 **b. Install Node.js v22**
 ```bash
