@@ -11,6 +11,8 @@ import {
   StatusCharacteristic,
 } from './characteristics/base.characteristic';
 import { CONFIG } from './config/app.config';
+import { ScanNetworksCharacteristic } from './characteristics/scan-networks.characteristic';
+import { NetworkListCharacteristic } from './characteristics/network-list.characteristic';
 
 /**
  * Application Bootstrap Class
@@ -27,6 +29,7 @@ class BeatnikApplication {
 
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
+    this.setupDependencyInjection();
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
   }
@@ -105,15 +108,19 @@ class BeatnikApplication {
     sessionContainer.registerSingleton('PasswordCharacteristic', PasswordCharacteristic);
     sessionContainer.registerSingleton('ConnectCharacteristic', ConnectCharacteristic);
     sessionContainer.registerSingleton('StatusCharacteristic', StatusCharacteristic);
+    sessionContainer.registerSingleton('ScanNetworksCharacteristic', ScanNetworksCharacteristic);
+    sessionContainer.registerSingleton('NetworkListCharacteristic', NetworkListCharacteristic);
 
     // Resolve instances from the session container
     const ssidChar = sessionContainer.resolve(SsidCharacteristic);
     const passwordChar = sessionContainer.resolve(PasswordCharacteristic);
     const connectChar = sessionContainer.resolve(ConnectCharacteristic);
     const statusChar = sessionContainer.resolve(StatusCharacteristic);
+    const scanNetworksChar = sessionContainer.resolve(ScanNetworksCharacteristic);
+    const networkListChar = sessionContainer.resolve(NetworkListCharacteristic);
 
     // Create and set services
-    this.setupServices([ssidChar, passwordChar, connectChar, statusChar]);
+    this.setupServices([ssidChar, passwordChar, connectChar, statusChar, scanNetworksChar, networkListChar]);
   }
 
   /**
@@ -155,6 +162,29 @@ class BeatnikApplication {
     bleno.stopAdvertising();
     bleno.disconnect();
     process.exit(0);
+  }
+
+  /**
+   * Setup dependency injection
+   */
+  private setupDependencyInjection(): void {
+    container.registerSingleton('WiFiManagerService', WiFiManagerService);
+    container.register('SsidCharacteristic', { useClass: SsidCharacteristic });
+    container.register('PasswordCharacteristic', {
+      useClass: PasswordCharacteristic,
+    });
+    container.register('ConnectCharacteristic', {
+      useClass: ConnectCharacteristic,
+    });
+    container.register('StatusCharacteristic', {
+      useClass: StatusCharacteristic,
+    });
+    container.register('ScanNetworksCharacteristic', {
+      useClass: ScanNetworksCharacteristic,
+    });
+    container.register('NetworkListCharacteristic', {
+      useClass: NetworkListCharacteristic,
+    });
   }
 }
 

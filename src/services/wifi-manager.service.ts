@@ -2,7 +2,7 @@ import { injectable } from 'tsyringe';
 import { EventEmitter } from 'events';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
-import { WiFiCredentials, WiFiStatus, Platform } from '../models/wifi.model';
+import { WiFiCredentials, WiFiStatus, Network, Platform } from '../models/wifi.model';
 import { CONFIG } from '../config/app.config';
 
 /**
@@ -13,7 +13,7 @@ import { CONFIG } from '../config/app.config';
  */
 @injectable()
 export class WiFiManagerService extends EventEmitter {
-  private currentStatus: WiFiStatus = {
+  private status: WiFiStatus = {
     connected: false,
     ssid: null,
     ip: null,
@@ -197,15 +197,15 @@ network={
    * Get current WiFi status
    */
   public getStatus(): WiFiStatus {
-    return { ...this.currentStatus };
+    return { ...this.status };
   }
 
   /**
    * Update status and emit event
    */
   private updateStatus(status: Partial<WiFiStatus>): void {
-    this.currentStatus = { ...this.currentStatus, ...status };
-    this.emit('statusChange', this.currentStatus);
+    this.status = { ...this.status, ...status };
+    this.emit('status-update', this.status);
   }
 
   /**
@@ -233,25 +233,51 @@ network={
   /**
    * Scan for available networks (optional feature)
    */
-  public async scanNetworks(): Promise<string> {
-    try {
-      const platform = process.platform as Platform;
-      let command: string;
+  public scanNetworks(): void {
+    console.log('Starting WiFi network scan...');
+    // Use nmcli to scan for networks. -t for terse, -f for fields.
+    // --rescan yes forces a new scan.
+    const command = `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes`;
 
-      if (platform === Platform.LINUX) {
-        command = `sudo iwlist ${CONFIG.wifi.interface} scan | grep ESSID`;
-      } else if (platform === Platform.DARWIN) {
-        command = '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s';
-      } else {
-        throw new Error('Unsupported platform');
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error scanning for networks: ${error.message}`);
+        this.emit('error', new Error('Failed to scan for networks.'));
+        return;
+      }
+      if (stderr) {
+        // nmcli can print warnings to stderr, so we log but don't treat as a fatal error.
+        console.warn(`Warning during network scan: ${stderr}`);
       }
 
-      const output = await this.execCommand(command);
-      console.log('📡 Available networks:', output);
-      return output;
-    } catch (error) {
-      console.error('Error scanning networks:', error);
-      throw error;
-    }
+      const networks = this.parseNmcliOutput(stdout);
+      console.log(`Found ${networks.length} unique networks.`);
+      this.emit('networks-found', networks);
+    });
+  }
+
+  private parseNmcliOutput(output: string): Network[] {
+    const lines = output.trim().split('\n');
+    const networksMap = new Map<string, Network>();
+
+    lines.forEach(line => {
+      // Handle escaped colons in SSIDs, although unlikely with -t flag
+      const parts = line.split(/(?<!\\):/);
+      if (parts.length >= 3) {
+        const ssid = parts[0].replace(/\\:/g, ':');
+        const quality = parseInt(parts[1], 10);
+        const security = parts.slice(2).join(':'); // Security can contain colons
+
+        if (ssid && !networksMap.has(ssid)) {
+          networksMap.set(ssid, {
+            ssid,
+            quality,
+            security: security.trim() || 'None',
+          });
+        }
+      }
+    });
+
+    return Array.from(networksMap.values());
   }
 }
