@@ -44,9 +44,18 @@ sudo systemctl start bluetooth
 
 ### 2. Install Node.js (if not already installed)
 
+It's recommended to use [nvm](https://github.com/nvm-sh/nvm) (Node Version Manager) to install and manage Node.js versions.
+
+**a. Install nvm**
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -bash -
-sudo apt-get install -y nodejs
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+```
+After installation, you'll need to restart your terminal or source the nvm script (e.g., `source ~/.nvm/nvm.sh`).
+
+**b. Install Node.js v22**
+```bash
+nvm install 22
+nvm use 22
 ```
 
 ### 3. Clone the Repository
@@ -61,6 +70,7 @@ cd beatnik-bleno
 ```bash
 npm install
 ```
+
 
 ### 5. Build TypeScript
 
