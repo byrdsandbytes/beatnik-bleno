@@ -124,7 +124,7 @@ grant_node_permissions() {
     log_info "Granting Node.js network capabilities to avoid using sudo..."
     
     # Get the full path to the node executable being used by nvm
-    node_path=$(nvm_find_node_version "$(nvm current)")/bin/node
+    node_path=$(which node)
     
     if [ -z "$node_path" ]; then
         log_error "Could not find the path for the current Node.js executable."
