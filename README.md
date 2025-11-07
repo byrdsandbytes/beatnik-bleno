@@ -28,7 +28,39 @@ A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi and othe
 
 ## Installation
 
-### 1. Install System Dependencies
+### Quick Install (Recommended)
+
+For a fast and reliable setup on a Raspberry Pi or other Debian-based Linux system, use the automated setup script. This script will:
+- Install `nvm` (Node Version Manager) if not present.
+- Install the correct version of Node.js.
+- Install required system dependencies (`bluez`, `libbluetooth-dev`, etc.).
+- Configure the Bluetooth hardware (`rfkill`, `hciconfig`).
+- Install project dependencies (`npm install`).
+- Build the project.
+- Grant Node.js the necessary capabilities to run without `sudo`.
+
+```bash
+git clone https://github.com/byrdsandbytes/beatnik-bleno.git
+cd beatnik-bleno
+chmod +x setup.sh
+./setup.sh
+```
+*Note: The script will prompt for your password to install system packages and set permissions.*
+
+### Environment Verification
+
+If you encounter issues or want to validate your environment at any time, use the `verify-setup.sh` script. It checks all the same points as the setup script and reports the status of your system.
+
+```bash
+chmod +x verify-setup.sh
+./verify-setup.sh
+```
+
+### Manual Installation
+
+If you prefer to install dependencies manually, follow these steps.
+
+#### 1. Install System Dependencies
 
 **On Raspberry Pi / Debian / Ubuntu:**
 ```bash
@@ -38,46 +70,52 @@ sudo apt-get install bluetooth bluez libbluetooth-dev libudev-dev
 
 **Enable Bluetooth:**
 ```bash
+# Unblock if necessary
+sudo rfkill unblock bluetooth
+# Bring the interface up
+sudo hciconfig hci0 up
+# Enable the service
 sudo systemctl enable bluetooth
 sudo systemctl start bluetooth
 ```
 
-### 2. Install Node.js (if not already installed)
+#### 2. Install Node.js (using nvm)
 
-It's recommended to use [nvm](https://github.com/nvm-sh/nvm) (Node Version Manager) to install and manage Node.js versions.
+It's recommended to use [nvm](https://github.com/nvm-sh/nvm) (Node Version Manager).
 
 **a. Install nvm**
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 ```
-After installation, add the following lines to your shell's startup script (e.g., `~/.zshrc`, `~/.bashrc`) to source nvm on startup.
+After installation, add the following lines to your shell's startup script (e.g., `~/.zshrc`, `~/.bashrc`) to source nvm on startup. Then, restart your terminal.
 
 ```bash
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use # This loads nvm, without auto-using the default version
 ```
 
-**b. Install Node.js v22**
+**b. Install Node.js**
 ```bash
-nvm install 22
-nvm use 22
+# From the project directory
+nvm install
+nvm use
 ```
 
-### 3. Clone the Repository
+#### 3. Clone the Repository
 
 ```bash
 git clone https://github.com/byrdsandbytes/beatnik-bleno.git
 cd beatnik-bleno
 ```
 
-### 4. Install Dependencies
+#### 4. Install Dependencies
 
 ```bash
 npm install
 ```
 
 
-### 5. Build TypeScript
+#### 5. Build TypeScript
 
 ```bash
 npm run build
@@ -85,12 +123,12 @@ npm run build
 
 This compiles TypeScript to JavaScript in the `dist/` folder.
 
-### 6. Grant Bluetooth Permissions (Linux)
+#### 6. Grant Bluetooth Permissions (Linux)
 
 To run without sudo:
 
 ```bash
-sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
+sudo setcap cap_net_raw+eip $(which node)
 ```
 
 ## Project Structure

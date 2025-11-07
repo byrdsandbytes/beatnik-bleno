@@ -80,11 +80,13 @@ class BeatnikApplication {
 
       console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
       console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
-      console.log('\n📋 Available characteristics:');
+      console.log(`\n📋 Available characteristics:`);
       console.log(`   • SSID:     ${CONFIG.characteristics.ssidUuid}`);
       console.log(`   • Password: ${CONFIG.characteristics.passwordUuid}`);
       console.log(`   • Connect:  ${CONFIG.characteristics.connectUuid}`);
       console.log(`   • Status:   ${CONFIG.characteristics.statusUuid}`);
+      console.log(`   • Scan:     ${CONFIG.characteristics.scanNetworksUuid}`);
+      console.log(`   • Networks: ${CONFIG.characteristics.networkListUuid}`);
       console.log('\n💡 Waiting for client connection...\n');
 
       // Create a new child container for this session to ensure fresh instances
