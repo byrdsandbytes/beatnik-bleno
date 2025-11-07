@@ -44,6 +44,14 @@ class BeatnikApplication {
    * Setup Bleno event handlers
    */
   private setupBleno(): void {
+    console.log('🔧 Initializing Bleno...');
+
+    if (!bleno) {
+      console.error('🔴 Bleno object is not available. The library may have failed to load.');
+      process.exit(1);
+    }
+
+    console.log('🔧 Setting up Bleno event listeners...');
     bleno.on('stateChange', (state: string) => {
       console.log(`ℹ️  Bluetooth adapter state: ${state}`);
 

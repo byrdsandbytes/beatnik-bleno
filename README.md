@@ -283,7 +283,15 @@ export interface WiFiStatus {
 # Check Bluetooth status
 hciconfig
 
-# Reset Bluetooth
+# If the device (e.g., hci0) is shown as DOWN, bring it up:
+sudo hciconfig hci0 up
+
+# If you get an "RF-kill" error, unblock Bluetooth:
+sudo rfkill unblock bluetooth
+# Then try bringing the interface up again:
+sudo hciconfig hci0 up
+
+# Reset Bluetooth if needed
 sudo hciconfig hci0 down
 sudo hciconfig hci0 up
 ```
