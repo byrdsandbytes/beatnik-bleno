@@ -2,7 +2,7 @@ import 'reflect-metadata';
 // Use require for CommonJS compatibility with bleno
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const bleno = require('@abandonware/bleno');
-import { container } from 'tsyringe';
+import { container, injectable } from 'tsyringe';
 import { WiFiManagerService } from './services/wifi-manager.service';
 import {
   SsidCharacteristic,
@@ -18,6 +18,7 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  * Application Bootstrap Class
  * Similar to Angular's main.ts and AppModule pattern
  */
+@injectable()
 class BeatnikApplication {
   constructor() {}
 
@@ -25,27 +26,81 @@ class BeatnikApplication {
    * Bootstrap the application
    */
   public async bootstrap(): Promise<void> {
-    console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
+    // Force Bleno to use the first available HCI device (hci0)
+    // This is crucial for compatibility with different Raspberry Pi models
+    if (process.platform === 'linux') {
+      process.env.BLENO_HCI_DEVICE_ID = '0';
+    }
 
-    this.setupBlenoEventHandlers();
-    this.setupGracefulShutdown();
+    console.log('🥦 Starting Beatnik WiFi Provisioning Service...');
+    console.log('\n💡 Press Ctrl+C to stop the service.\n');
+
     this.setupDependencyInjection();
-
-    console.log('💡 Press Ctrl+C to stop the service.\n');
+    this.setupBleno();
+    this.setupGracefulShutdown(); // Add this call
   }
 
   /**
    * Setup Bleno event handlers
    */
-  private setupBlenoEventHandlers(): void {
-    // Handle state changes
+  private setupBleno(): void {
     bleno.on('stateChange', (state: string) => {
-      this.onStateChange(state);
+      console.log(`ℹ️  Bluetooth adapter state: ${state}`);
+
+      if (state === 'poweredOn') {
+        bleno.startAdvertising(
+          CONFIG.bluetooth.deviceName,
+          [CONFIG.bluetooth.serviceUuid],
+          (error: any) => {
+            if (error) {
+              console.error('🛑 Error starting advertising:', error);
+            }
+          }
+        );
+      } else {
+        console.error('🔴 Bluetooth is not powered on. Stopping...');
+        bleno.stopAdvertising();
+        process.exit(1); // Exit if the adapter is not usable
+      }
     });
 
-    // Handle advertising start
-    bleno.on('advertisingStart', (error: any) => {
-      this.onAdvertisingStart(error);
+    bleno.on('advertisingStart', (error?: Error) => {
+      if (error) {
+        console.error('🔴 Advertising failed to start:', error);
+        return;
+      }
+
+      console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
+      console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
+      console.log('\n📋 Available characteristics:');
+      console.log(`   • SSID:     ${CONFIG.characteristics.ssidUuid}`);
+      console.log(`   • Password: ${CONFIG.characteristics.passwordUuid}`);
+      console.log(`   • Connect:  ${CONFIG.characteristics.connectUuid}`);
+      console.log(`   • Status:   ${CONFIG.characteristics.statusUuid}`);
+      console.log('\n💡 Waiting for client connection...\n');
+
+      // Create a new child container for this session to ensure fresh instances
+      const sessionContainer = container.createChildContainer();
+
+      // Register services and characteristics as singletons FOR THIS SESSION
+      sessionContainer.registerSingleton('WiFiManagerService', WiFiManagerService);
+      sessionContainer.registerSingleton('SsidCharacteristic', SsidCharacteristic);
+      sessionContainer.registerSingleton('PasswordCharacteristic', PasswordCharacteristic);
+      sessionContainer.registerSingleton('ConnectCharacteristic', ConnectCharacteristic);
+      sessionContainer.registerSingleton('StatusCharacteristic', StatusCharacteristic);
+      sessionContainer.registerSingleton('ScanNetworksCharacteristic', ScanNetworksCharacteristic);
+      sessionContainer.registerSingleton('NetworkListCharacteristic', NetworkListCharacteristic);
+
+      // Resolve instances from the session container
+      const ssidChar = sessionContainer.resolve(SsidCharacteristic);
+      const passwordChar = sessionContainer.resolve(PasswordCharacteristic);
+      const connectChar = sessionContainer.resolve(ConnectCharacteristic);
+      const statusChar = sessionContainer.resolve(StatusCharacteristic);
+      const scanNetworksChar = sessionContainer.resolve(ScanNetworksCharacteristic);
+      const networkListChar = sessionContainer.resolve(NetworkListCharacteristic);
+
+      // Create and set services
+      this.setupServices([ssidChar, passwordChar, connectChar, statusChar, scanNetworksChar, networkListChar]);
     });
 
     // Handle client connections
@@ -57,70 +112,6 @@ class BeatnikApplication {
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
     });
-  }
-
-  /**
-   * Handle Bluetooth state changes
-   */
-  private onStateChange(state: string): void {
-    console.log(`ℹ️  Bluetooth adapter state: ${state}`);
-
-    if (state === 'poweredOn') {
-      bleno.startAdvertising(
-        CONFIG.bluetooth.deviceName,
-        [CONFIG.bluetooth.serviceUuid],
-        (error: any) => {
-          if (error) {
-            console.error('🛑 Error starting advertising:', error);
-          }
-        }
-      );
-    } else {
-      console.log('⚠️  Bluetooth not ready, stopping advertising...');
-      bleno.stopAdvertising();
-    }
-  }
-
-  /**
-   * Handle advertising start event
-   */
-  private onAdvertisingStart(error: Error | null): void {
-    if (error) {
-      console.error('🛑 Error on advertising start:', error);
-      return;
-    }
-
-    console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
-    console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
-    console.log('\n📋 Available characteristics:');
-    console.log(`   • SSID:     ${CONFIG.characteristics.ssidUuid}`);
-    console.log(`   • Password: ${CONFIG.characteristics.passwordUuid}`);
-    console.log(`   • Connect:  ${CONFIG.characteristics.connectUuid}`);
-    console.log(`   • Status:   ${CONFIG.characteristics.statusUuid}`);
-    console.log('\n💡 Waiting for client connection...\n');
-
-    // Create a new child container for this session to ensure fresh instances
-    const sessionContainer = container.createChildContainer();
-
-    // Register services and characteristics as singletons FOR THIS SESSION
-    sessionContainer.registerSingleton('WiFiManagerService', WiFiManagerService);
-    sessionContainer.registerSingleton('SsidCharacteristic', SsidCharacteristic);
-    sessionContainer.registerSingleton('PasswordCharacteristic', PasswordCharacteristic);
-    sessionContainer.registerSingleton('ConnectCharacteristic', ConnectCharacteristic);
-    sessionContainer.registerSingleton('StatusCharacteristic', StatusCharacteristic);
-    sessionContainer.registerSingleton('ScanNetworksCharacteristic', ScanNetworksCharacteristic);
-    sessionContainer.registerSingleton('NetworkListCharacteristic', NetworkListCharacteristic);
-
-    // Resolve instances from the session container
-    const ssidChar = sessionContainer.resolve(SsidCharacteristic);
-    const passwordChar = sessionContainer.resolve(PasswordCharacteristic);
-    const connectChar = sessionContainer.resolve(ConnectCharacteristic);
-    const statusChar = sessionContainer.resolve(StatusCharacteristic);
-    const scanNetworksChar = sessionContainer.resolve(ScanNetworksCharacteristic);
-    const networkListChar = sessionContainer.resolve(NetworkListCharacteristic);
-
-    // Create and set services
-    this.setupServices([ssidChar, passwordChar, connectChar, statusChar, scanNetworksChar, networkListChar]);
   }
 
   /**
@@ -145,23 +136,25 @@ class BeatnikApplication {
    * Setup graceful shutdown handlers
    */
   private setupGracefulShutdown(): void {
-    process.on('SIGINT', () => {
-      this.shutdown();
-    });
+    const cleanup = () => {
+      console.log('\n gracefully shutting down...');
+      try {
+        bleno.stopAdvertising(() => {
+          console.log('✅ Advertising stopped.');
+          // Disconnect any connected clients
+          // (bleno handles this partially, but explicit cleanup is good)
+          process.exit(0);
+        });
+      } catch (e) {
+        console.error('🔴 Error during cleanup:', e);
+        process.exit(1);
+      }
+    };
 
-    process.on('SIGTERM', () => {
-      this.shutdown();
-    });
-  }
-
-  /**
-   * Graceful shutdown
-   */
-  private shutdown(): void {
-    console.log('\n\n🛑 Shutting down...');
-    bleno.stopAdvertising();
-    bleno.disconnect();
-    process.exit(0);
+    // Listen for Ctrl+C
+    process.on('SIGINT', cleanup);
+    // Listen for kill commands
+    process.on('SIGTERM', cleanup);
   }
 
   /**
@@ -194,13 +187,19 @@ class BeatnikApplication {
  */
 async function bootstrap(): Promise<void> {
   try {
-    const app = new BeatnikApplication();
+    const app = container.resolve(BeatnikApplication);
     await app.bootstrap();
   } catch (error) {
-    console.error('❌ Failed to bootstrap application:', error);
+    console.error('🔴 Unhandled error during bootstrap:', error);
     process.exit(1);
   }
 }
+
+// Catch unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🔴 Unhandled Rejection at:', promise, 'reason:', reason);
+  // Optionally exit or log
+});
 
 // Start the application
 bootstrap();
