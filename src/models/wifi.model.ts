@@ -35,3 +35,9 @@ export enum ConnectionState {
   FAILED = 'failed',
   DISCONNECTED = 'disconnected'
 }
+
+export interface Network {
+  ssid: string;
+  quality: number;
+  security: string;
+}
