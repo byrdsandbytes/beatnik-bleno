@@ -4,6 +4,7 @@ import 'reflect-metadata';
 const bleno = require('@abandonware/bleno');
 import { container } from 'tsyringe';
 import { WiFiManagerService } from './services/wifi-manager.service';
+import { GpioService } from './services/gpio.service';
 import {
   SsidCharacteristic,
   PasswordCharacteristic,
@@ -19,6 +20,8 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  * Similar to Angular's main.ts and AppModule pattern
  */
 class BeatnikApplication {
+  private gpioService: GpioService;
+
   constructor() {}
 
   /**
@@ -27,9 +30,11 @@ class BeatnikApplication {
   public async bootstrap(): Promise<void> {
     console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
 
+    this.setupDependencyInjection();
+    this.gpioService = container.resolve(GpioService); // Resolve the service
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
-    this.setupDependencyInjection();
+    this.setupButtonHandler(); // Setup button event listener
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
   }
@@ -51,11 +56,13 @@ class BeatnikApplication {
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
+      this.gpioService.setColor(0, 1, 0); // Solid green
     });
 
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
+      this.gpioService.pulse([0, 0, 1]); // Back to pulsing blue
     });
   }
 
@@ -89,6 +96,8 @@ class BeatnikApplication {
       console.error('🛑 Error on advertising start:', error);
       return;
     }
+
+    this.gpioService.pulse([0, 0, 1]); // Pulse blue to indicate advertising
 
     console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
     console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
@@ -159,6 +168,7 @@ class BeatnikApplication {
    */
   private shutdown(): void {
     console.log('\n\n🛑 Shutting down...');
+    this.gpioService.cleanup(); // Clean up the GPIO child process
     bleno.stopAdvertising();
     bleno.disconnect();
     process.exit(0);
@@ -169,6 +179,7 @@ class BeatnikApplication {
    */
   private setupDependencyInjection(): void {
     container.registerSingleton('WiFiManagerService', WiFiManagerService);
+    container.registerSingleton('GpioService', GpioService);
     container.register('SsidCharacteristic', { useClass: SsidCharacteristic });
     container.register('PasswordCharacteristic', {
       useClass: PasswordCharacteristic,
@@ -184,6 +195,28 @@ class BeatnikApplication {
     });
     container.register('NetworkListCharacteristic', {
       useClass: NetworkListCharacteristic,
+    });
+  }
+
+  /**
+   * Setup handler for button press events
+   */
+  private setupButtonHandler(): void {
+    const wifiManager = container.resolve(WiFiManagerService);
+
+    this.gpioService.on('button_pressed', () => {
+      console.log('🎉 Button press received! Triggering WiFi scan.');
+      this.gpioService.blink([1, 1, 0]); // Blink yellow for scanning
+      wifiManager.scanNetworks();
+    });
+
+    // Also, listen for when the scan is done to return to the idle state
+    wifiManager.on('networks-found', () => {
+      console.log('📶 Network scan complete. Returning to idle LED state.');
+      // Check if a client is connected to decide the correct state
+      // For simplicity, we'll just go back to pulsing blue.
+      // A more advanced state machine could be used here.
+      this.gpioService.pulse([0, 0, 1]);
     });
   }
 }

@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+import sys
+import json
+import random
+from gpiozero import RGBLED, Button
+from signal import pause
+
+# --- Pin Configuration (BCM) ---
+PIN_RED = 17
+PIN_GREEN = 27
+PIN_BLUE = 22
+PIN_BUTTON = 26
+
+# --- Initialization ---
+try:
+    # Initialize RGB LED as a common-anode type
+    led = RGBLED(red=PIN_RED, green=PIN_GREEN, blue=PIN_BLUE, active_high=False)
+    # Initialize Button (pull_up=True since it's connected to GND)
+    button = Button(PIN_BUTTON, pull_up=True)
+except Exception as e:
+    sys.stderr.write(f"Error initializing GPIO: {e}\n")
+    sys.exit(1)
+
+# --- Event Handlers ---
+def on_button_press():
+    """Send a JSON event to stdout when the button is pressed."""
+    event = {"event": "button_pressed"}
+    sys.stdout.write(json.dumps(event) + '\n')
+    sys.stdout.flush()
+
+button.when_pressed = on_button_press
+
+# --- Command Functions ---
+def set_color(r, g, b):
+    """Set a solid color."""
+    led.color = (r, g, b)
+
+def pulse(color=(1, 1, 1), fade_in=1, fade_out=1):
+    """Pulse the LED with a given color."""
+    led.pulse(fade_in_time=fade_in, fade_out_time=fade_out, on_color=tuple(color), off_color=(0, 0, 0), background=True)
+
+def blink(color=(1, 1, 1), on_time=0.5, off_time=0.5):
+    """Blink the LED with a given color."""
+    led.blink(on_time=on_time, off_time=off_time, on_color=tuple(color), off_color=(0, 0, 0), background=True)
+
+def turn_off():
+    """Turn the LED off."""
+    led.off()
+
+# --- Main Loop ---
+def listen_for_commands():
+    """Read commands from stdin and execute them."""
+    turn_off() # Start with LED off
+    sys.stderr.write("GPIO handler script started and listening for commands.\n")
+    
+    for line in sys.stdin:
+        try:
+            cmd = json.loads(line)
+            command = cmd.get("command")
+            params = cmd.get("params", {})
+
+            if command == "set_color":
+                set_color(params.get("r", 0), params.get("g", 0), params.get("b", 0))
+            elif command == "pulse":
+                pulse(color=params.get("color", [0, 0, 1]), fade_in=params.get("fade_in", 1), fade_out=params.get("fade_out", 1))
+            elif command == "blink":
+                blink(color=params.get("color", [1, 1, 0]), on_time=params.get("on_time", 0.5), off_time=params.get("off_time", 0.5))
+            elif command == "off":
+                turn_off()
+            else:
+                sys.stderr.write(f"Unknown command: {command}\n")
+
+        except json.JSONDecodeError:
+            sys.stderr.write(f"Invalid JSON received: {line.strip()}\n")
+        except Exception as e:
+            sys.stderr.write(f"Error processing command: {e}\n")
+
+if __name__ == "__main__":
+    listen_for_commands()
