@@ -73,15 +73,7 @@ class BeatnikApplication {
     console.log(`ℹ️  Bluetooth adapter state: ${state}`);
 
     if (state === 'poweredOn') {
-      bleno.startAdvertising(
-        CONFIG.bluetooth.deviceName,
-        [CONFIG.bluetooth.serviceUuid],
-        (error: any) => {
-          if (error) {
-            console.error('🛑 Error starting advertising:', error);
-          }
-        }
-      );
+      console.log('✅ Bluetooth powered on. Waiting for button press to start advertising...');
     } else {
       console.log('⚠️  Bluetooth not ready, stopping advertising...');
       bleno.stopAdvertising();
@@ -204,10 +196,57 @@ class BeatnikApplication {
   private setupButtonHandler(): void {
     const wifiManager = container.resolve(WiFiManagerService);
 
-    this.gpioService.on('button_pressed', () => {
-      console.log('🎉 Button press received! Triggering WiFi scan.');
-      this.gpioService.blink([1, 1, 0]); // Blink yellow for scanning
-      wifiManager.scanNetworks();
+    // Short Press: Trigger WiFi Scan / Provisioning
+    this.gpioService.on('button_click', () => {
+      console.log('🎉 Button Click! Starting WiFi Provisioning Service...');
+      
+      if (bleno.state === 'poweredOn') {
+        bleno.startAdvertising(
+          CONFIG.bluetooth.deviceName,
+          [CONFIG.bluetooth.serviceUuid],
+          (error: any) => {
+            if (error) {
+              console.error('🛑 Error starting advertising:', error);
+            }
+          }
+        );
+      } else {
+        console.log('⚠️  Cannot start advertising: Bluetooth not powered on.');
+      }
+    });
+
+    // Medium Hold (2-8s): Restart Device
+    this.gpioService.on('button_restart', () => {
+      console.log('🔄 Button Restart Triggered! Rebooting...');
+      this.gpioService.pulse([1, 0.5, 0]); // Pulse Orange
+      
+      // Execute reboot
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { exec } = require('child_process');
+      exec('sudo reboot', (error: any) => {
+        if (error) {
+            console.error('Failed to reboot:', error);
+        }
+      });
+    });
+
+    // Long Hold (>8s): Factory Reset
+    this.gpioService.on('button_reset', async () => {
+      console.log('⚠️ Button Reset Triggered! Clearing Config...');
+      this.gpioService.blink([1, 0, 0], 0.1, 0.1); // Fast Red Blink
+      
+      try {
+        await wifiManager.disconnect();
+        console.log('✅ Config cleared. Rebooting in 3 seconds...');
+        
+        setTimeout(() => {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            const { exec } = require('child_process');
+            exec('sudo reboot');
+        }, 3000);
+      } catch (error) {
+        console.error('Failed to reset:', error);
+      }
     });
 
     // Also, listen for when the scan is done to return to the idle state

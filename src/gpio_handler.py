@@ -2,6 +2,7 @@
 import sys
 import json
 import random
+from time import time
 from gpiozero import RGBLED, Button
 from signal import pause
 
@@ -22,13 +23,31 @@ except Exception as e:
     sys.exit(1)
 
 # --- Event Handlers ---
-def on_button_press():
-    """Send a JSON event to stdout when the button is pressed."""
-    event = {"event": "button_pressed"}
+press_start_time = 0
+
+def on_button_pressed():
+    """Record the start time when the button is pressed."""
+    global press_start_time
+    press_start_time = time()
+
+def on_button_released():
+    """Calculate duration and send appropriate event."""
+    global press_start_time
+    duration = time() - press_start_time
+    
+    if duration < 2:
+        event_name = "button_click"
+    elif duration < 8:
+        event_name = "button_restart"
+    else:
+        event_name = "button_reset"
+        
+    event = {"event": event_name, "duration": duration}
     sys.stdout.write(json.dumps(event) + '\n')
     sys.stdout.flush()
 
-button.when_pressed = on_button_press
+button.when_pressed = on_button_pressed
+button.when_released = on_button_released
 
 # --- Command Functions ---
 def set_color(r, g, b):

@@ -37,9 +37,24 @@ export class GpioService extends EventEmitter {
       messages.forEach(message => {
         try {
           const event = JSON.parse(message);
-          if (event.event === 'button_pressed') {
-            console.log('🔘 Button press detected!');
-            this.emit('button_pressed');
+          
+          switch (event.event) {
+            case 'button_click':
+              console.log('🔘 Button Click detected!');
+              this.emit('button_click');
+              break;
+            case 'button_restart':
+              console.log('🔄 Button Restart Hold detected!');
+              this.emit('button_restart');
+              break;
+            case 'button_reset':
+              console.log('⚠️ Button Reset Hold detected!');
+              this.emit('button_reset');
+              break;
+            case 'button_pressed': // Legacy/Fallback
+              console.log('🔘 Button press detected!');
+              this.emit('button_pressed');
+              break;
           }
         } catch (error) {
           // Non-JSON output can be treated as logs

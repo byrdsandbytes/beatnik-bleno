@@ -87,6 +87,48 @@ export class WiFiManagerService extends EventEmitter {
   }
 
   /**
+   * Disconnect and clear WiFi configuration
+   */
+  public async disconnect(): Promise<void> {
+    console.log('🔌 Disconnecting and clearing WiFi config...');
+    const platform = process.platform as Platform;
+    
+    if (platform === Platform.LINUX) {
+      // Try nmcli
+      try {
+        await this.execCommand(`nmcli device disconnect ${CONFIG.wifi.interface}`);
+      } catch (e) {
+        // Ignore error if nmcli fails
+      }
+
+      // Reset wpa_supplicant
+      try {
+        const emptyConfig = `
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=CH
+`;
+        const configPath = '/tmp/wpa_supplicant_reset.conf';
+        await fs.writeFile(configPath, emptyConfig);
+        await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
+        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
+      } catch (e) {
+        console.error('Error resetting wpa_supplicant:', e);
+      }
+    } else if (platform === Platform.DARWIN) {
+        // macOS implementation (optional, mostly for dev)
+        // networksetup -removepreferredwirelessnetwork en0 <ssid>
+    }
+    
+    this.updateStatus({
+      connected: false,
+      ssid: null,
+      ip: null,
+      message: 'Disconnected',
+    });
+  }
+
+  /**
    * Connect to WiFi on Linux (Raspberry Pi)
    */
   private async connectLinux(credentials: WiFiCredentials): Promise<void> {
