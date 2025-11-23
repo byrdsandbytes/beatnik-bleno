@@ -34,6 +34,8 @@ class BeatnikApplication {
 
     this.setupDependencyInjection();
     this.gpioService = container.resolve(GpioService); // Resolve the service
+    this.gpioService.setColor(1, 0.5, 0); // Solid Amber: Initializing/Idle
+
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
     this.setupButtonHandler(); // Setup button event listener
@@ -60,14 +62,14 @@ class BeatnikApplication {
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
       this.isClientConnected = true;
-      this.gpioService.setColor(0, 0, 1); // Solid Blue: Bluetooth connected
+      this.gpioService.setColor(0, 0, 1); // Solid Blue: BLE connected
     });
 
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
       this.isClientConnected = false;
-      this.gpioService.pulse([0.5, 0.5, 0]); // Pulsing Amber: No connection
+      this.gpioService.pulse([0, 0, 1]); // Pulsing Blue: Waiting for connection
     });
   }
 
@@ -102,7 +104,7 @@ class BeatnikApplication {
       return;
     }
 
-    this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber: No connection
+    this.gpioService.pulse([0, 0, 1]); // Pulsing Blue: Waiting for connection
 
     console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
     console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
@@ -221,7 +223,7 @@ class BeatnikApplication {
       if (this.isClientConnected) {
         this.gpioService.setColor(0, 0, 1); // Solid Blue
       } else {
-        this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber
+        this.gpioService.pulse([0, 0, 1]); // Pulsing Blue
       }
     });
   }
