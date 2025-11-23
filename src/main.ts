@@ -14,6 +14,7 @@ import {
 import { CONFIG } from './config/app.config';
 import { ScanNetworksCharacteristic } from './characteristics/scan-networks.characteristic';
 import { NetworkListCharacteristic } from './characteristics/network-list.characteristic';
+import { WiFiStatus } from './models/wifi.model';
 
 /**
  * Application Bootstrap Class
@@ -21,6 +22,7 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  */
 class BeatnikApplication {
   private gpioService: GpioService;
+  private isClientConnected = false;
 
   constructor() {}
 
@@ -35,6 +37,7 @@ class BeatnikApplication {
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
     this.setupButtonHandler(); // Setup button event listener
+    this.setupWifiStatusHandler(); // Listen for WiFi connection results
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
   }
@@ -56,13 +59,15 @@ class BeatnikApplication {
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
-      this.gpioService.setColor(0, 1, 0); // Solid green
+      this.isClientConnected = true;
+      this.gpioService.setColor(0, 0, 1); // Solid Blue: Bluetooth connected
     });
 
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
-      this.gpioService.pulse([0, 0, 1]); // Back to pulsing blue
+      this.isClientConnected = false;
+      this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber: No connection
     });
   }
 
@@ -97,7 +102,7 @@ class BeatnikApplication {
       return;
     }
 
-    this.gpioService.pulse([0, 0, 1]); // Pulse blue to indicate advertising
+    this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber: No connection
 
     console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
     console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
@@ -210,13 +215,29 @@ class BeatnikApplication {
       wifiManager.scanNetworks();
     });
 
-    // Also, listen for when the scan is done to return to the idle state
+    // When the scan is done, return to the correct idle state
     wifiManager.on('networks-found', () => {
       console.log('📶 Network scan complete. Returning to idle LED state.');
-      // Check if a client is connected to decide the correct state
-      // For simplicity, we'll just go back to pulsing blue.
-      // A more advanced state machine could be used here.
-      this.gpioService.pulse([0, 0, 1]);
+      if (this.isClientConnected) {
+        this.gpioService.setColor(0, 0, 1); // Solid Blue
+      } else {
+        this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber
+      }
+    });
+  }
+
+  /**
+   * Setup handler for WiFi status events to control LED
+   */
+  private setupWifiStatusHandler(): void {
+    const wifiManager = container.resolve(WiFiManagerService);
+
+    wifiManager.on('status-update', (status: WiFiStatus) => {
+      if (status.connected) {
+        this.gpioService.setColor(0, 1, 0); // Solid Green: WiFi connected
+      } else if (status.message.toLowerCase().includes('fail') || status.message.toLowerCase().includes('timed out')) {
+        this.gpioService.blink([1, 0, 0]); // Blinking Red: Error
+      }
     });
   }
 }
