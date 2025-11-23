@@ -67,7 +67,7 @@ class BeatnikApplication {
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
       this.isClientConnected = false;
-      this.gpioService.pulse([1, 0.5, 0]); // Pulsing Amber: No connection
+      this.gpioService.pulse([0.5, 0.5, 0]); // Pulsing Amber: No connection
     });
   }
 
