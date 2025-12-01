@@ -1,5 +1,5 @@
 [Unit]
-Description=Beatnik WiFi Provisioning Service
+Description=Beatnik Bleno Service
 After=network.target bluetooth.target
 
 [Service]
