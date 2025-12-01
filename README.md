@@ -341,6 +341,30 @@ sudo systemctl start beatnik-wifi
 sudo systemctl status beatnik-wifi
 ```
 
+## Deployment (Raspberry Pi)
+
+To run this application as a background service that starts automatically on boot:
+
+1.  **Clone the repository** to your Raspberry Pi (e.g., in `/home/pi/beatnik-bleno`).
+2.  **Run the install script**:
+    ```bash
+    chmod +x install.sh
+    ./install.sh
+    ```
+
+This script will:
+*   Install necessary system dependencies.
+*   Install Node.js packages.
+*   Build the TypeScript project.
+*   Install and start the `beatnik.service` systemd unit.
+
+### Managing the Service
+
+*   **Check Status:** `sudo systemctl status beatnik.service`
+*   **View Logs:** `sudo journalctl -u beatnik.service -f`
+*   **Stop Service:** `sudo systemctl stop beatnik.service`
+*   **Restart Service:** `sudo systemctl restart beatnik.service`
+
 ## Development
 
 ### TypeScript Development
