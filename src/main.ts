@@ -103,8 +103,8 @@ class BeatnikApplication {
     // Create a new child container for this session to ensure fresh instances
     const sessionContainer = container.createChildContainer();
 
-    // Register services and characteristics as singletons FOR THIS SESSION
-    sessionContainer.registerSingleton('WiFiManagerService', WiFiManagerService);
+    // Register characteristics as singletons FOR THIS SESSION
+    // Note: WiFiManagerService is resolved from the parent container to share state
     sessionContainer.registerSingleton('SsidCharacteristic', SsidCharacteristic);
     sessionContainer.registerSingleton('PasswordCharacteristic', PasswordCharacteristic);
     sessionContainer.registerSingleton('ConnectCharacteristic', ConnectCharacteristic);
@@ -112,13 +112,13 @@ class BeatnikApplication {
     sessionContainer.registerSingleton('ScanNetworksCharacteristic', ScanNetworksCharacteristic);
     sessionContainer.registerSingleton('NetworkListCharacteristic', NetworkListCharacteristic);
 
-    // Resolve instances from the session container
-    const ssidChar = sessionContainer.resolve(SsidCharacteristic);
-    const passwordChar = sessionContainer.resolve(PasswordCharacteristic);
-    const connectChar = sessionContainer.resolve(ConnectCharacteristic);
-    const statusChar = sessionContainer.resolve(StatusCharacteristic);
-    const scanNetworksChar = sessionContainer.resolve(ScanNetworksCharacteristic);
-    const networkListChar = sessionContainer.resolve(NetworkListCharacteristic);
+    // Resolve instances from the session container using STRING TOKENS to match injection
+    const ssidChar = sessionContainer.resolve<SsidCharacteristic>('SsidCharacteristic');
+    const passwordChar = sessionContainer.resolve<PasswordCharacteristic>('PasswordCharacteristic');
+    const connectChar = sessionContainer.resolve<ConnectCharacteristic>('ConnectCharacteristic');
+    const statusChar = sessionContainer.resolve<StatusCharacteristic>('StatusCharacteristic');
+    const scanNetworksChar = sessionContainer.resolve<ScanNetworksCharacteristic>('ScanNetworksCharacteristic');
+    const networkListChar = sessionContainer.resolve<NetworkListCharacteristic>('NetworkListCharacteristic');
 
     // Create and set services
     this.setupServices([ssidChar, passwordChar, connectChar, statusChar, scanNetworksChar, networkListChar]);
