@@ -180,7 +180,7 @@ export class StatusCharacteristic extends bleno.Characteristic {
   }
 
   private setupStatusListener(): void {
-    this.wifiManager.on('statusChange', (status) => {
+    this.wifiManager.on('status-update', (status) => {
       console.log('📊 WiFi status changed:', status);
       if (this.updateValueCallback) {
         const statusStr = JSON.stringify(status);
