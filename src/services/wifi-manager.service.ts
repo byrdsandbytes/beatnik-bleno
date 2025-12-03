@@ -150,7 +150,14 @@ country=CH
       await fs.writeFile(configPath, wpaConfig);
       await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
       await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
+      
+      // Try dhclient first, fallback to dhcpcd
+      try {
+        await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
+      } catch (dhclientError) {
+        console.log('⚠️  dhclient failed or not found, trying dhcpcd...');
+        await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
+      }
     } catch (error) {
       console.error('Error configuring wpa_supplicant:', error);
       throw error;

@@ -8,7 +8,7 @@ echo "🥦 Setting up Beatnik Service..."
 # 1. Install System Dependencies (needed for Bleno and other tools)
 echo "📦 Installing system dependencies..."
 sudo apt-get update
-sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager
+sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager isc-dhcp-client
 
 # Unblock Bluetooth
 echo "🔓 Unblocking Bluetooth..."
