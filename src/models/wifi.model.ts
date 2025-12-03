@@ -13,6 +13,7 @@ export interface WiFiStatus {
   connected: boolean;
   ssid: string | null;
   ip: string | null;
+  hostname: string | null;
   message: string;
 }
 

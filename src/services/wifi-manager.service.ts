@@ -2,6 +2,7 @@ import { injectable } from 'tsyringe';
 import { EventEmitter } from 'events';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
+import os from 'os';
 import { WiFiCredentials, WiFiStatus, Network, Platform } from '../models/wifi.model';
 import { CONFIG } from '../config/app.config';
 
@@ -17,6 +18,7 @@ export class WiFiManagerService extends EventEmitter {
     connected: false,
     ssid: null,
     ip: null,
+    hostname: null,
     message: 'Not connected',
   };
 
@@ -43,6 +45,7 @@ export class WiFiManagerService extends EventEmitter {
         connected: false,
         ssid: credentials.ssid,
         ip: null,
+        hostname: null,
         message: 'Connecting...',
       });
 
@@ -64,13 +67,15 @@ export class WiFiManagerService extends EventEmitter {
 
       if (connected) {
         const ip = await this.getIPAddress();
+        const hostname = os.hostname();
         this.updateStatus({
           connected: true,
           ssid: credentials.ssid,
           ip,
+          hostname,
           message: 'Connected successfully',
         });
-        console.log(`✅ Connected to "${credentials.ssid}" (IP: ${ip})`);
+        console.log(`✅ Connected to "${credentials.ssid}" (IP: ${ip}, Hostname: ${hostname})`);
       } else {
         throw new Error('Connection verification failed');
       }
@@ -80,6 +85,7 @@ export class WiFiManagerService extends EventEmitter {
         connected: false,
         ssid: credentials.ssid,
         ip: null,
+        hostname: null,
         message: `Connection failed: ${errorMessage}`,
       });
       throw error;
@@ -124,6 +130,7 @@ country=CH
       connected: false,
       ssid: null,
       ip: null,
+      hostname: null,
       message: 'Disconnected',
     });
   }
