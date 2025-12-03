@@ -14,6 +14,7 @@ export interface WiFiStatus {
   ssid: string | null;
   ip: string | null;
   hostname: string | null;
+  deviceId: string | null;
   message: string;
 }
 

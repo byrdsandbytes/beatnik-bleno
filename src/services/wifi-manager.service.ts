@@ -19,6 +19,7 @@ export class WiFiManagerService extends EventEmitter {
     ssid: null,
     ip: null,
     hostname: null,
+    deviceId: null,
     message: 'Not connected',
   };
 
@@ -30,8 +31,11 @@ export class WiFiManagerService extends EventEmitter {
   /**
    * Initialize the service (similar to Angular's ngOnInit)
    */
-  private initializeService(): void {
+  private async initializeService(): Promise<void> {
     console.log('🔧 WiFiManagerService initialized');
+    const deviceId = await this.getDeviceId();
+    const hostname = os.hostname();
+    this.updateStatus({ deviceId, hostname });
   }
 
   /**
@@ -245,6 +249,36 @@ network={
       return output.trim() || null;
     } catch (error) {
       console.error('Error getting IP address:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the device ID (MAC address)
+   */
+  private async getDeviceId(): Promise<string | null> {
+    try {
+      const platform = process.platform as Platform;
+      
+      if (platform === Platform.LINUX) {
+        // Try to read MAC address from sysfs
+        try {
+          const mac = await fs.readFile(`/sys/class/net/${CONFIG.wifi.interface}/address`, 'utf8');
+          return mac.trim();
+        } catch (e) {
+          // Fallback to ip link
+          const output = await this.execCommand(`ip link show ${CONFIG.wifi.interface} | awk '/link\\/ether/ {print $2}'`);
+          return output.trim() || null;
+        }
+      } else if (platform === Platform.DARWIN) {
+        // macOS
+        const output = await this.execCommand('networksetup -getmacaddress en0 | awk \'{print $3}\'');
+        return output.trim() || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting device ID:', error);
       return null;
     }
   }
