@@ -10,9 +10,16 @@ echo "📦 Installing system dependencies..."
 sudo apt-get update
 sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager isc-dhcp-client curl build-essential
 
-# Unblock Bluetooth
-echo "🔓 Unblocking Bluetooth..."
+# Unblock Bluetooth and WiFi
+echo "🔓 Unblocking Bluetooth and WiFi..."
 sudo rfkill unblock bluetooth
+sudo rfkill unblock wifi
+
+# Ensure WiFi interface is up (assuming wlan0)
+if ip link show wlan0 > /dev/null 2>&1; then
+    echo "   Bringing up wlan0..."
+    sudo ip link set wlan0 up
+fi
 
 # 1.5 Setup Node.js via NVM
 echo "🟢 Setting up Node.js (NVM)..."

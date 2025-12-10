@@ -310,6 +310,48 @@ ifconfig wlan0
 sudo nmcli device wifi connect "SSID" password "PASSWORD"
 ```
 
+### WiFi Interface Blocked (RF-kill)
+
+If the WiFi interface is down or blocked (e.g., `Operation not possible due to RF-kill`):
+
+```bash
+# Check status
+ip link show wlan0
+
+# Unblock WiFi
+sudo rfkill unblock wifi
+
+# Bring interface up
+sudo ip link set wlan0 up
+```
+
+### Viewing Service Logs
+
+To view the live logs of the service for debugging:
+
+```bash
+# Follow live logs
+sudo journalctl -u beatnik-bleno.service -f
+
+# View last 100 lines
+sudo journalctl -u beatnik-bleno.service -n 100 --no-pager
+```
+
+### WiFi Scan Returns Empty List
+
+If the WiFi scan returns 0 networks, it is likely that the **WiFi Country Code** is not set. The 5GHz and sometimes 2.4GHz radios are disabled until the regulatory domain is set.
+
+**Fix:**
+1.  Run `sudo raspi-config`
+2.  Go to **5 Localisation Options** -> **L4 WLAN Country**
+3.  Select your country (e.g., `US`, `DE`, `GB`)
+4.  Finish and Reboot.
+
+Alternatively, check logs for warnings:
+```bash
+sudo journalctl -u beatnik-bleno.service -f
+```
+
 ## Deployment & Auto-Start (Raspberry Pi)
 
 The easiest way to deploy the service on a Raspberry Pi is using the included installation script.
@@ -325,7 +367,7 @@ The easiest way to deploy the service on a Raspberry Pi is using the included in
 
 This script handles everything for you:
 *   Installs system dependencies (`bluetooth`, `bluez`, `network-manager`, `isc-dhcp-client`).
-*   Unblocks Bluetooth (`rfkill`).
+*   Unblocks Bluetooth and WiFi (`rfkill`).
 *   Installs Node.js dependencies and builds the project.
 *   Configures and starts the `beatnik-bleno.service` systemd unit, automatically detecting your Node.js path (compatible with `nvm`).
 

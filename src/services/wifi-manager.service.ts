@@ -342,8 +342,47 @@ network={
 
       const networks = this.parseNmcliOutput(stdout);
       console.log(`Found ${networks.length} unique networks.`);
+
+      if (networks.length === 0) {
+        this.checkPossibleScanIssues();
+      }
+
       this.emit('networks-found', networks);
     });
+  }
+
+  /**
+   * Check for common issues if scan returns no results
+   */
+  private async checkPossibleScanIssues(): Promise<void> {
+    try {
+      // Check if WiFi country is set (common issue on Raspberry Pi)
+      if (process.platform === Platform.LINUX) {
+        try {
+            const wpaConfig = await fs.readFile('/etc/wpa_supplicant/wpa_supplicant.conf', 'utf8');
+            if (!wpaConfig.includes('country=')) {
+                console.warn('⚠️  WARNING: No WiFi country code found in /etc/wpa_supplicant/wpa_supplicant.conf');
+                console.warn('   WiFi scanning may be disabled until the country is set.');
+                console.warn('   Run "sudo raspi-config" -> Localisation Options -> WLAN Country to set it.');
+            }
+        } catch (e) {
+            // Ignore read error
+        }
+        
+        // Check if rfkill is blocking
+        try {
+            const rfkill = await this.execCommand('rfkill list wifi');
+            if (rfkill.includes('Soft blocked: yes') || rfkill.includes('Hard blocked: yes')) {
+                console.warn('⚠️  WARNING: WiFi is blocked by rfkill.');
+                console.warn('   Run "sudo rfkill unblock wifi" to fix.');
+            }
+        } catch (e) {
+            // Ignore
+        }
+      }
+    } catch (error) {
+        console.error('Error checking scan issues:', error);
+    }
   }
 
   private parseNmcliOutput(output: string): Network[] {
