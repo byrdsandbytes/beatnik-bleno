@@ -17,8 +17,8 @@ export const CONFIG = {
   },
   wifi: {
     interface: 'wlan0',
-    connectionTimeout: 3000,
-    verificationTimeout: 5000,
+    connectionTimeout: 15000,
+    verificationTimeout: 10000,
   },
 } as const;
 
