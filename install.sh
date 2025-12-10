@@ -16,18 +16,26 @@ sudo rfkill unblock bluetooth
 
 # 1.5 Setup Node.js via NVM
 echo "🟢 Setting up Node.js (NVM)..."
-export NVM_DIR="$HOME/.nvm"
 
-# Install NVM if not found
-if [ ! -d "$NVM_DIR" ]; then
+# Define NVM_DIR (robust method from README/nvm docs)
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+
+# Install NVM if not found or incomplete
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
   echo "   Installing NVM..."
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 fi
 
 # Load NVM
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # Use '.' instead of '\.' for script compatibility, and add --no-use
+  . "$NVM_DIR/nvm.sh" --no-use
+else
+  echo "❌ Failed to locate nvm.sh"
+  exit 1
+fi
 
-# Install and use Node.js 22
+# Install and use Node.js v22
 echo "   Installing Node.js v22..."
 nvm install 22
 nvm use 22
