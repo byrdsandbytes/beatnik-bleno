@@ -109,22 +109,7 @@ export class WiFiManagerService extends EventEmitter {
       try {
         await this.execCommand(`nmcli device disconnect ${CONFIG.wifi.interface}`);
       } catch (e) {
-        // Ignore error if nmcli fails
-      }
-
-      // Reset wpa_supplicant
-      try {
-        const emptyConfig = `
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=CH
-`;
-        const configPath = '/tmp/wpa_supplicant_reset.conf';
-        await fs.writeFile(configPath, emptyConfig);
-        await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
-        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      } catch (e) {
-        console.error('Error resetting wpa_supplicant:', e);
+        console.warn('Error disconnecting via nmcli:', e);
       }
     } else if (platform === Platform.DARWIN) {
         // macOS implementation (optional, mostly for dev)
@@ -176,78 +161,16 @@ country=CH
               );
               return;
           } catch (retryError) {
-              console.warn(`⚠️  NetworkManager retry failed: ${(retryError as Error).message}`);
+              console.error(`⚠️  NetworkManager retry failed: ${(retryError as Error).message}`);
+              throw retryError;
           }
       }
       
-      console.log('⚠️  Falling back to wpa_supplicant...');
-    }
-
-    // Fallback to wpa_supplicant
-    try {
-      // Try to read existing country code
-      let countryCode = 'CH';
-      try {
-          const currentConfig = await fs.readFile('/etc/wpa_supplicant/wpa_supplicant.conf', 'utf8');
-          const match = currentConfig.match(/country=([A-Z]{2})/);
-          if (match && match[1]) {
-              countryCode = match[1];
-              console.log(`Detected WiFi country code: ${countryCode}`);
-          }
-      } catch (e) {
-          console.warn('Could not read existing wpa_supplicant.conf for country code, defaulting to US');
-      }
-
-      const wpaConfig = this.generateWPAConfig(credentials, countryCode);
-      const configPath = '/tmp/wpa_supplicant_temp.conf';
-      
-      await fs.writeFile(configPath, wpaConfig);
-      await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
-      
-      try {
-        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      } catch (reconfigError) {
-         console.error('Failed to reconfigure wpa_supplicant:', reconfigError);
-         throw new Error(`wpa_cli reconfigure failed: ${(reconfigError as Error).message}`);
-      }
-      
-      // Try dhclient first, fallback to dhcpcd
-      try {
-        console.log('Attempting to obtain IP via dhclient...');
-        await this.execCommand(`sudo dhclient -v ${CONFIG.wifi.interface}`);
-      } catch (dhclientError) {
-        console.warn(`⚠️  dhclient failed: ${(dhclientError as Error).message}`);
-        console.log('Trying dhcpcd as fallback...');
-        try {
-            await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
-        } catch (dhcpcdError) {
-             console.error(`⚠️  dhcpcd also failed: ${(dhcpcdError as Error).message}`);
-             throw new Error(`DHCP configuration failed. dhclient error: ${(dhclientError as Error).message}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error configuring wpa_supplicant:', error);
-      throw error;
+      // If we get here, it failed and we are not falling back
+      throw nmcliError;
     }
   }
 
-  /**
-   * Generate WPA configuration
-   */
-  private generateWPAConfig(credentials: WiFiCredentials, countryCode: string = 'US'): string {
-    return `
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=${countryCode}
-
-network={
-    ssid="${credentials.ssid}"
-    psk="${credentials.password}"
-    key_mgmt=WPA-PSK
-    scan_ssid=1
-}
-`;
-  }
 
   /**
    * Helper to escape shell arguments
