@@ -146,8 +146,13 @@ country=CH
   private async connectLinux(credentials: WiFiCredentials): Promise<void> {
     // Try using nmcli first (if NetworkManager is available)
     try {
+      // Use single quotes for the whole command and escape the arguments
+      // This prevents shell expansion of special characters in the password (like $)
+      const ssidArg = this.escapeShellArg(credentials.ssid);
+      const passArg = this.escapeShellArg(credentials.password);
+      
       await this.execCommand(
-        `nmcli device wifi connect "${credentials.ssid}" password "${credentials.password}"`
+        `nmcli device wifi connect ${ssidArg} password ${passArg}`
       );
       return;
     } catch (nmcliError) {
@@ -164,8 +169,10 @@ country=CH
               
               // Try connecting again
               console.log('🔄 Retrying connection with NetworkManager...');
+              const ssidArg = this.escapeShellArg(credentials.ssid);
+              const passArg = this.escapeShellArg(credentials.password);
               await this.execCommand(
-                `nmcli device wifi connect "${credentials.ssid}" password "${credentials.password}"`
+                `nmcli device wifi connect ${ssidArg} password ${passArg}`
               );
               return;
           } catch (retryError) {
@@ -178,7 +185,20 @@ country=CH
 
     // Fallback to wpa_supplicant
     try {
-      const wpaConfig = this.generateWPAConfig(credentials);
+      // Try to read existing country code
+      let countryCode = 'CH';
+      try {
+          const currentConfig = await fs.readFile('/etc/wpa_supplicant/wpa_supplicant.conf', 'utf8');
+          const match = currentConfig.match(/country=([A-Z]{2})/);
+          if (match && match[1]) {
+              countryCode = match[1];
+              console.log(`Detected WiFi country code: ${countryCode}`);
+          }
+      } catch (e) {
+          console.warn('Could not read existing wpa_supplicant.conf for country code, defaulting to US');
+      }
+
+      const wpaConfig = this.generateWPAConfig(credentials, countryCode);
       const configPath = '/tmp/wpa_supplicant_temp.conf';
       
       await fs.writeFile(configPath, wpaConfig);
@@ -214,18 +234,27 @@ country=CH
   /**
    * Generate WPA configuration
    */
-  private generateWPAConfig(credentials: WiFiCredentials): string {
+  private generateWPAConfig(credentials: WiFiCredentials, countryCode: string = 'US'): string {
     return `
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
-country=US
+country=${countryCode}
 
 network={
     ssid="${credentials.ssid}"
     psk="${credentials.password}"
     key_mgmt=WPA-PSK
+    scan_ssid=1
 }
 `;
+  }
+
+  /**
+   * Helper to escape shell arguments
+   */
+  private escapeShellArg(arg: string): string {
+    // Replace ' with '"'"' to be safe inside single quotes
+    return `'${arg.replace(/'/g, "'\"'\"'")}'`;
   }
 
   /**
