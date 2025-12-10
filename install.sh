@@ -8,11 +8,30 @@ echo "🥦 Setting up Beatnik Service..."
 # 1. Install System Dependencies (needed for Bleno and other tools)
 echo "📦 Installing system dependencies..."
 sudo apt-get update
-sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager isc-dhcp-client
+sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager isc-dhcp-client curl build-essential
 
 # Unblock Bluetooth
 echo "🔓 Unblocking Bluetooth..."
 sudo rfkill unblock bluetooth
+
+# 1.5 Setup Node.js via NVM
+echo "🟢 Setting up Node.js (NVM)..."
+export NVM_DIR="$HOME/.nvm"
+
+# Install NVM if not found
+if [ ! -d "$NVM_DIR" ]; then
+  echo "   Installing NVM..."
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+fi
+
+# Load NVM
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Install and use Node.js 22
+echo "   Installing Node.js v22..."
+nvm install 22
+nvm use 22
+nvm alias default 22
 
 # 2. Install Node.js dependencies
 echo "📦 Installing Node.js dependencies..."
