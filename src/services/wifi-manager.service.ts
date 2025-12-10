@@ -85,6 +85,7 @@ export class WiFiManagerService extends EventEmitter {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ Connection attempt failed: ${errorMessage}`);
       this.updateStatus({
         connected: false,
         ssid: credentials.ssid,
@@ -150,7 +151,29 @@ country=CH
       );
       return;
     } catch (nmcliError) {
-      console.log('⚠️  NetworkManager not available, trying wpa_supplicant...');
+      const errMsg = (nmcliError as Error).message;
+      console.warn(`⚠️  NetworkManager connect failed: ${errMsg}`);
+
+      // If the service is not running, try to start it
+      if (errMsg.includes('NetworkManager is not running') || errMsg.includes('failed to connect to socket') || errMsg.includes('not found')) {
+          console.log('🔄 Attempting to start NetworkManager service...');
+          try {
+              await this.execCommand('sudo systemctl start NetworkManager');
+              // Wait a bit for it to start
+              await this.sleep(5000);
+              
+              // Try connecting again
+              console.log('🔄 Retrying connection with NetworkManager...');
+              await this.execCommand(
+                `nmcli device wifi connect "${credentials.ssid}" password "${credentials.password}"`
+              );
+              return;
+          } catch (retryError) {
+              console.warn(`⚠️  NetworkManager retry failed: ${(retryError as Error).message}`);
+          }
+      }
+      
+      console.log('⚠️  Falling back to wpa_supplicant...');
     }
 
     // Fallback to wpa_supplicant
@@ -160,14 +183,27 @@ country=CH
       
       await fs.writeFile(configPath, wpaConfig);
       await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
-      await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
+      
+      try {
+        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
+      } catch (reconfigError) {
+         console.error('Failed to reconfigure wpa_supplicant:', reconfigError);
+         throw new Error(`wpa_cli reconfigure failed: ${(reconfigError as Error).message}`);
+      }
       
       // Try dhclient first, fallback to dhcpcd
       try {
-        await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
+        console.log('Attempting to obtain IP via dhclient...');
+        await this.execCommand(`sudo dhclient -v ${CONFIG.wifi.interface}`);
       } catch (dhclientError) {
-        console.log('⚠️  dhclient failed or not found, trying dhcpcd...');
-        await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
+        console.warn(`⚠️  dhclient failed: ${(dhclientError as Error).message}`);
+        console.log('Trying dhcpcd as fallback...');
+        try {
+            await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
+        } catch (dhcpcdError) {
+             console.error(`⚠️  dhcpcd also failed: ${(dhcpcdError as Error).message}`);
+             throw new Error(`DHCP configuration failed. dhclient error: ${(dhclientError as Error).message}`);
+        }
       }
     } catch (error) {
       console.error('Error configuring wpa_supplicant:', error);
@@ -222,7 +258,21 @@ network={
       }
 
       const output = await this.execCommand(command);
-      return output.includes(ssid);
+      const isConnected = output.includes(ssid);
+
+      if (!isConnected) {
+          console.warn(`Connection verification failed. Expected SSID "${ssid}" not found in output.`);
+          console.warn(`Output was: ${output.trim()}`);
+          
+          if (platform === Platform.LINUX) {
+              try {
+                  const wpaStatus = await this.execCommand(`wpa_cli -i ${CONFIG.wifi.interface} status`);
+                  console.warn(`wpa_cli status: ${wpaStatus}`);
+              } catch (e) { /* ignore */ }
+          }
+      }
+
+      return isConnected;
     } catch (error) {
       console.error('Error verifying connection:', error);
       return false;
@@ -303,8 +353,11 @@ network={
    */
   private execCommand(command: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      exec(command, (error, stdout) => {
+      exec(command, (error, stdout, stderr) => {
         if (error) {
+          if (stderr) {
+            error.message += ` (stderr: ${stderr.trim()})`;
+          }
           reject(error);
           return;
         }
