@@ -1,4 +1,4 @@
-# Beatnik WiFi Provisioning Service
+# Beatnik Bleno Service
 
 A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi and other Linux devices using Bleno. Built with **TypeScript** and Angular-style architecture patterns including dependency injection, decorators, and service-based design.
 
@@ -38,6 +38,7 @@ sudo apt-get install bluetooth bluez libbluetooth-dev libudev-dev
 
 **Enable Bluetooth:**
 ```bash
+sudo rfkill unblock bluetooth
 sudo systemctl enable bluetooth
 sudo systemctl start bluetooth
 ```
@@ -341,6 +342,30 @@ sudo systemctl start beatnik-wifi
 sudo systemctl status beatnik-wifi
 ```
 
+## Deployment (Raspberry Pi)
+
+To run this application as a background service that starts automatically on boot:
+
+1.  **Clone the repository** to your Raspberry Pi (e.g., in `/home/pi/beatnik-bleno`).
+2.  **Run the install script**:
+    ```bash
+    chmod +x install.sh
+    ./install.sh
+    ```
+
+This script will:
+*   Install necessary system dependencies.
+*   Install Node.js packages.
+*   Build the TypeScript project.
+*   Install and start the `beatnik-bleno.service` systemd unit.
+
+### Managing the Service
+
+*   **Check Status:** `sudo systemctl status beatnik-bleno.service`
+*   **View Logs:** `sudo journalctl -u beatnik-bleno.service -f`
+*   **Stop Service:** `sudo systemctl stop beatnik-bleno.service`
+*   **Restart Service:** `sudo systemctl restart beatnik-bleno.service`
+
 ## Development
 
 ### TypeScript Development
@@ -405,7 +430,7 @@ container.register('MyCustomCharacteristic', { useClass: MyCustomCharacteristic 
 
 ## License
 
-MIT
+AGPLv3
 
 ## Contributing
 

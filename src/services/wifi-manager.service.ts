@@ -2,6 +2,7 @@ import { injectable } from 'tsyringe';
 import { EventEmitter } from 'events';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
+import os from 'os';
 import { WiFiCredentials, WiFiStatus, Network, Platform } from '../models/wifi.model';
 import { CONFIG } from '../config/app.config';
 
@@ -17,6 +18,8 @@ export class WiFiManagerService extends EventEmitter {
     connected: false,
     ssid: null,
     ip: null,
+    hostname: null,
+    deviceId: null,
     message: 'Not connected',
   };
 
@@ -28,8 +31,11 @@ export class WiFiManagerService extends EventEmitter {
   /**
    * Initialize the service (similar to Angular's ngOnInit)
    */
-  private initializeService(): void {
+  private async initializeService(): Promise<void> {
     console.log('🔧 WiFiManagerService initialized');
+    const deviceId = await this.getDeviceId();
+    const hostname = os.hostname();
+    this.updateStatus({ deviceId, hostname });
   }
 
   /**
@@ -43,6 +49,7 @@ export class WiFiManagerService extends EventEmitter {
         connected: false,
         ssid: credentials.ssid,
         ip: null,
+        hostname: null,
         message: 'Connecting...',
       });
 
@@ -64,13 +71,15 @@ export class WiFiManagerService extends EventEmitter {
 
       if (connected) {
         const ip = await this.getIPAddress();
+        const hostname = os.hostname();
         this.updateStatus({
           connected: true,
           ssid: credentials.ssid,
           ip,
+          hostname,
           message: 'Connected successfully',
         });
-        console.log(`✅ Connected to "${credentials.ssid}" (IP: ${ip})`);
+        console.log(`✅ Connected to "${credentials.ssid}" (IP: ${ip}, Hostname: ${hostname})`);
       } else {
         throw new Error('Connection verification failed');
       }
@@ -80,10 +89,54 @@ export class WiFiManagerService extends EventEmitter {
         connected: false,
         ssid: credentials.ssid,
         ip: null,
+        hostname: null,
         message: `Connection failed: ${errorMessage}`,
       });
       throw error;
     }
+  }
+
+  /**
+   * Disconnect and clear WiFi configuration
+   */
+  public async disconnect(): Promise<void> {
+    console.log('🔌 Disconnecting and clearing WiFi config...');
+    const platform = process.platform as Platform;
+    
+    if (platform === Platform.LINUX) {
+      // Try nmcli
+      try {
+        await this.execCommand(`nmcli device disconnect ${CONFIG.wifi.interface}`);
+      } catch (e) {
+        // Ignore error if nmcli fails
+      }
+
+      // Reset wpa_supplicant
+      try {
+        const emptyConfig = `
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=CH
+`;
+        const configPath = '/tmp/wpa_supplicant_reset.conf';
+        await fs.writeFile(configPath, emptyConfig);
+        await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
+        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
+      } catch (e) {
+        console.error('Error resetting wpa_supplicant:', e);
+      }
+    } else if (platform === Platform.DARWIN) {
+        // macOS implementation (optional, mostly for dev)
+        // networksetup -removepreferredwirelessnetwork en0 <ssid>
+    }
+    
+    this.updateStatus({
+      connected: false,
+      ssid: null,
+      ip: null,
+      hostname: null,
+      message: 'Disconnected',
+    });
   }
 
   /**
@@ -108,7 +161,14 @@ export class WiFiManagerService extends EventEmitter {
       await fs.writeFile(configPath, wpaConfig);
       await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
       await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
+      
+      // Try dhclient first, fallback to dhcpcd
+      try {
+        await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
+      } catch (dhclientError) {
+        console.log('⚠️  dhclient failed or not found, trying dhcpcd...');
+        await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
+      }
     } catch (error) {
       console.error('Error configuring wpa_supplicant:', error);
       throw error;
@@ -189,6 +249,36 @@ network={
       return output.trim() || null;
     } catch (error) {
       console.error('Error getting IP address:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the device ID (MAC address)
+   */
+  private async getDeviceId(): Promise<string | null> {
+    try {
+      const platform = process.platform as Platform;
+      
+      if (platform === Platform.LINUX) {
+        // Try to read MAC address from sysfs
+        try {
+          const mac = await fs.readFile(`/sys/class/net/${CONFIG.wifi.interface}/address`, 'utf8');
+          return mac.trim();
+        } catch (e) {
+          // Fallback to ip link
+          const output = await this.execCommand(`ip link show ${CONFIG.wifi.interface} | awk '/link\\/ether/ {print $2}'`);
+          return output.trim() || null;
+        }
+      } else if (platform === Platform.DARWIN) {
+        // macOS
+        const output = await this.execCommand('networksetup -getmacaddress en0 | awk \'{print $3}\'');
+        return output.trim() || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting device ID:', error);
       return null;
     }
   }

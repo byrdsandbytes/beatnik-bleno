@@ -4,7 +4,7 @@
   "description": "WiFi provisioning service using Bleno for Beatnik device",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/gpio_handler.py dist/",
     "start": "npm run build && node dist/main.js",
     "dev": "ts-node src/main.ts",
     "watch": "tsc --watch",
