@@ -85,6 +85,7 @@ export class WiFiManagerService extends EventEmitter {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`❌ Connection attempt failed: ${errorMessage}`);
       this.updateStatus({
         connected: false,
         ssid: credentials.ssid,
@@ -108,22 +109,7 @@ export class WiFiManagerService extends EventEmitter {
       try {
         await this.execCommand(`nmcli device disconnect ${CONFIG.wifi.interface}`);
       } catch (e) {
-        // Ignore error if nmcli fails
-      }
-
-      // Reset wpa_supplicant
-      try {
-        const emptyConfig = `
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=CH
-`;
-        const configPath = '/tmp/wpa_supplicant_reset.conf';
-        await fs.writeFile(configPath, emptyConfig);
-        await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
-        await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      } catch (e) {
-        console.error('Error resetting wpa_supplicant:', e);
+        console.warn('Error disconnecting via nmcli:', e);
       }
     } else if (platform === Platform.DARWIN) {
         // macOS implementation (optional, mostly for dev)
@@ -145,51 +131,68 @@ country=CH
   private async connectLinux(credentials: WiFiCredentials): Promise<void> {
     // Try using nmcli first (if NetworkManager is available)
     try {
+      // Use single quotes for the whole command and escape the arguments
+      // This prevents shell expansion of special characters in the password (like $)
+      const ssidArg = this.escapeShellArg(credentials.ssid);
+      const passArg = this.escapeShellArg(credentials.password);
+      
+      // Delete any existing connection profile for this SSID to ensure a fresh start
+      // This fixes "802-11-wireless-security.key-mgmt: property is missing" errors
+      // caused by stale or corrupted connection profiles
+      try {
+          await this.execCommand(`nmcli connection delete id ${ssidArg}`);
+      } catch (e) {
+          // Ignore error if connection doesn't exist
+      }
+
       await this.execCommand(
-        `nmcli device wifi connect "${credentials.ssid}" password "${credentials.password}"`
+        `nmcli device wifi connect ${ssidArg} password ${passArg}`
       );
       return;
     } catch (nmcliError) {
-      console.log('⚠️  NetworkManager not available, trying wpa_supplicant...');
-    }
+      const errMsg = (nmcliError as Error).message;
+      console.warn(`⚠️  NetworkManager connect failed: ${errMsg}`);
 
-    // Fallback to wpa_supplicant
-    try {
-      const wpaConfig = this.generateWPAConfig(credentials);
-      const configPath = '/tmp/wpa_supplicant_temp.conf';
-      
-      await fs.writeFile(configPath, wpaConfig);
-      await this.execCommand(`sudo cp ${configPath} /etc/wpa_supplicant/wpa_supplicant.conf`);
-      await this.execCommand(`sudo wpa_cli -i ${CONFIG.wifi.interface} reconfigure`);
-      
-      // Try dhclient first, fallback to dhcpcd
-      try {
-        await this.execCommand(`sudo dhclient ${CONFIG.wifi.interface}`);
-      } catch (dhclientError) {
-        console.log('⚠️  dhclient failed or not found, trying dhcpcd...');
-        await this.execCommand(`sudo dhcpcd ${CONFIG.wifi.interface}`);
+      // If the service is not running, try to start it
+      if (errMsg.includes('NetworkManager is not running') || errMsg.includes('failed to connect to socket') || errMsg.includes('not found')) {
+          console.log('🔄 Attempting to start NetworkManager service...');
+          try {
+              await this.execCommand('sudo systemctl start NetworkManager');
+              // Wait a bit for it to start
+              await this.sleep(5000);
+              
+              // Try connecting again
+              console.log('🔄 Retrying connection with NetworkManager...');
+              const ssidArg = this.escapeShellArg(credentials.ssid);
+              const passArg = this.escapeShellArg(credentials.password);
+              
+              // Also try deleting here just in case
+              try {
+                  await this.execCommand(`nmcli connection delete id ${ssidArg}`);
+              } catch (e) { /* ignore */ }
+
+              await this.execCommand(
+                `nmcli device wifi connect ${ssidArg} password ${passArg}`
+              );
+              return;
+          } catch (retryError) {
+              console.error(`⚠️  NetworkManager retry failed: ${(retryError as Error).message}`);
+              throw retryError;
+          }
       }
-    } catch (error) {
-      console.error('Error configuring wpa_supplicant:', error);
-      throw error;
+      
+      // If we get here, it failed and we are not falling back
+      throw nmcliError;
     }
   }
 
-  /**
-   * Generate WPA configuration
-   */
-  private generateWPAConfig(credentials: WiFiCredentials): string {
-    return `
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-country=US
 
-network={
-    ssid="${credentials.ssid}"
-    psk="${credentials.password}"
-    key_mgmt=WPA-PSK
-}
-`;
+  /**
+   * Helper to escape shell arguments
+   */
+  private escapeShellArg(arg: string): string {
+    // Replace ' with '"'"' to be safe inside single quotes
+    return `'${arg.replace(/'/g, "'\"'\"'")}'`;
   }
 
   /**
@@ -222,7 +225,21 @@ network={
       }
 
       const output = await this.execCommand(command);
-      return output.includes(ssid);
+      const isConnected = output.includes(ssid);
+
+      if (!isConnected) {
+          console.warn(`Connection verification failed. Expected SSID "${ssid}" not found in output.`);
+          console.warn(`Output was: ${output.trim()}`);
+          
+          if (platform === Platform.LINUX) {
+              try {
+                  const wpaStatus = await this.execCommand(`wpa_cli -i ${CONFIG.wifi.interface} status`);
+                  console.warn(`wpa_cli status: ${wpaStatus}`);
+              } catch (e) { /* ignore */ }
+          }
+      }
+
+      return isConnected;
     } catch (error) {
       console.error('Error verifying connection:', error);
       return false;
@@ -303,8 +320,11 @@ network={
    */
   private execCommand(command: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      exec(command, (error, stdout) => {
+      exec(command, (error, stdout, stderr) => {
         if (error) {
+          if (stderr) {
+            error.message += ` (stderr: ${stderr.trim()})`;
+          }
           reject(error);
           return;
         }
