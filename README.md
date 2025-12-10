@@ -310,41 +310,11 @@ ifconfig wlan0
 sudo nmcli device wifi connect "SSID" password "PASSWORD"
 ```
 
-## Running on Boot (Systemd Service)
+## Deployment & Auto-Start (Raspberry Pi)
 
-Create `/etc/systemd/system/beatnik-wifi.service`:
+The easiest way to deploy the service on a Raspberry Pi is using the included installation script.
 
-```ini
-[Unit]
-Description=Beatnik WiFi Provisioning Service
-After=network.target bluetooth.target
-
-[Service]
-Type=simple
-User=pi
-WorkingDirectory=/home/pi/beatnik-bleno
-ExecStart=/usr/bin/node dist/main.js
-Restart=on-failure
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable beatnik-wifi
-sudo systemctl start beatnik-wifi
-
-# Check status
-sudo systemctl status beatnik-wifi
-```
-
-## Deployment (Raspberry Pi)
-
-To run this application as a background service that starts automatically on boot:
+### Option 1: Automated Installation (Recommended)
 
 1.  **Clone the repository** to your Raspberry Pi (e.g., in `/home/pi/beatnik-bleno`).
 2.  **Run the install script**:
@@ -353,11 +323,34 @@ To run this application as a background service that starts automatically on boo
     ./install.sh
     ```
 
-This script will:
-*   Install necessary system dependencies.
-*   Install Node.js packages.
-*   Build the TypeScript project.
-*   Install and start the `beatnik-bleno.service` systemd unit.
+This script handles everything for you:
+*   Installs system dependencies (`bluetooth`, `bluez`, `network-manager`, `isc-dhcp-client`).
+*   Unblocks Bluetooth (`rfkill`).
+*   Installs Node.js dependencies and builds the project.
+*   Configures and starts the `beatnik-bleno.service` systemd unit, automatically detecting your Node.js path (compatible with `nvm`).
+
+### Option 2: Manual Service Setup
+
+If you prefer to set it up manually:
+
+1.  **Modify the service file**:
+    Edit `beatnik-bleno.service` and update `ExecStart` and `WorkingDirectory` with your actual paths.
+    ```ini
+    [Service]
+    ...
+    WorkingDirectory=/home/pi/beatnik-bleno
+    ExecStart=/usr/bin/node /home/pi/beatnik-bleno/dist/main.js
+    ...
+    ```
+    *Note: If using nvm, find your node path with `which node` and use that absolute path.*
+
+2.  **Install the service**:
+    ```bash
+    sudo cp beatnik-bleno.service /etc/systemd/system/beatnik-bleno.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable beatnik-bleno.service
+    sudo systemctl start beatnik-bleno.service
+    ```
 
 ### Managing the Service
 
