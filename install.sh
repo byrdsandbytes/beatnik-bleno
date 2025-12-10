@@ -25,7 +25,7 @@ if [ ! -d "$NVM_DIR" ]; then
 fi
 
 # Load NVM
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
 # Install and use Node.js 22
 echo "   Installing Node.js v22..."
