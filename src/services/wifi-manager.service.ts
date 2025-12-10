@@ -136,6 +136,15 @@ export class WiFiManagerService extends EventEmitter {
       const ssidArg = this.escapeShellArg(credentials.ssid);
       const passArg = this.escapeShellArg(credentials.password);
       
+      // Delete any existing connection profile for this SSID to ensure a fresh start
+      // This fixes "802-11-wireless-security.key-mgmt: property is missing" errors
+      // caused by stale or corrupted connection profiles
+      try {
+          await this.execCommand(`nmcli connection delete id ${ssidArg}`);
+      } catch (e) {
+          // Ignore error if connection doesn't exist
+      }
+
       await this.execCommand(
         `nmcli device wifi connect ${ssidArg} password ${passArg}`
       );
@@ -156,6 +165,12 @@ export class WiFiManagerService extends EventEmitter {
               console.log('🔄 Retrying connection with NetworkManager...');
               const ssidArg = this.escapeShellArg(credentials.ssid);
               const passArg = this.escapeShellArg(credentials.password);
+              
+              // Also try deleting here just in case
+              try {
+                  await this.execCommand(`nmcli connection delete id ${ssidArg}`);
+              } catch (e) { /* ignore */ }
+
               await this.execCommand(
                 `nmcli device wifi connect ${ssidArg} password ${passArg}`
               );
