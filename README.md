@@ -28,6 +28,34 @@ A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi and othe
 
 ## Installation
 
+### 🚀 Quick Start (Recommended)
+
+We provide an automated installation script that handles system dependencies, Node.js (via nvm), and sets up the systemd service for you.
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/byrdsandbytes/beatnik-bleno.git
+    cd beatnik-bleno
+    ```
+
+2.  **Run the installer:**
+    ```bash
+    chmod +x install.sh
+    ./install.sh
+    ```
+
+    This script will:
+    - Install required system packages (`bluetooth`, `bluez`, `network-manager`, etc.)
+    - Unblock WiFi and Bluetooth via `rfkill`
+    - Install Node.js v22 using `nvm`
+    - Install project dependencies (`npm install`)
+    - Build the project
+    - Register and start the `beatnik-bleno` systemd service
+
+### Manual Installation
+
+If you prefer to set things up manually, follow these steps:
+
 ### 1. Install System Dependencies
 
 **On Raspberry Pi / Debian / Ubuntu:**
