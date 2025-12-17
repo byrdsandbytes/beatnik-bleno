@@ -21,6 +21,7 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  */
 class BeatnikApplication {
   private gpioService: GpioService;
+  private isConnecting = false;
 
   constructor() {}
 
@@ -62,6 +63,10 @@ class BeatnikApplication {
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
+      // Only set to blue if we are not currently busy with WiFi operations
+      // We can check this by tracking state, but for now, let's assume
+      // if we just connected, we are in "Connected" state.
+      // The WiFi operations (scan, connect) will override this later.
       this.gpioService.setColor(0, 0, 1); // Constant Blue
     });
 
@@ -262,15 +267,18 @@ class BeatnikApplication {
       // Status update is generic, so let's check the message or add a listener to 'status-update'
       wifiManager.on('status-update', (status: any) => {
           if (status.message === 'Connecting...') {
+              this.isConnecting = true;
               console.log('🔄 Connecting - LED: Pulsing Green');
               this.gpioService.pulse([0, 1, 0], [0, 0, 0], 0.5, 0.5);
           } else if (status.connected && status.message === 'Connected successfully') {
+              this.isConnecting = false;
               console.log('✅ Connected - LED: Constant Green (10s)');
               this.gpioService.setColor(0, 1, 0);
               setTimeout(() => {
                   this.gpioService.turnOff();
               }, 10000);
           } else if (!status.connected && status.message.startsWith('Connection failed')) {
+              this.isConnecting = false;
               console.log('❌ Connection Failed - LED: Flash Red (5s)');
               this.gpioService.blink([1, 0, 0], 0.2, 0.2);
               setTimeout(() => {
@@ -282,15 +290,12 @@ class BeatnikApplication {
       // When scan is done, if we are advertising, go back to pulsing blue
       wifiManager.on('networks-found', () => {
           console.log('📶 Scan complete.');
-          // If a client is connected, stay blue. If advertising, pulse blue.
-          // This logic is a bit tricky because we don't track client count easily here.
-          // But usually scan happens when client is connected.
-          // If client is connected, we should be Constant Blue.
-          // Let's rely on the fact that 'accept' sets it to Constant Blue.
-          // But scan changes it to Pulse Blue/Amber.
-          // So we need to restore Constant Blue if client is connected.
-          // Since we don't have easy access to client count here, we can assume if we are scanning, a client is likely connected.
-          this.gpioService.setColor(0, 0, 1); // Restore to Constant Blue (Client Connected state)
+          // Restore to Constant Blue (Client Connected state)
+          // We assume a client is connected because they requested the scan.
+          // Only do this if we are NOT currently trying to connect
+          if (!this.isConnecting) {
+             this.gpioService.setColor(0, 0, 1); 
+          }
       });
   }
 }
