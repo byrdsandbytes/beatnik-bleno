@@ -36,6 +36,70 @@ export class WiFiManagerService extends EventEmitter {
     const deviceId = await this.getDeviceId();
     const hostname = os.hostname();
     this.updateStatus({ deviceId, hostname });
+    
+    // Check if we are already connected
+    await this.checkCurrentConnection();
+  }
+
+  /**
+   * Check if we are already connected to a network
+   */
+  public async checkCurrentConnection(): Promise<void> {
+    try {
+      const ip = await this.getIPAddress();
+      if (ip) {
+        // We have an IP, so we are likely connected. Let's find the SSID.
+        const ssid = await this.getCurrentSSID();
+        
+        if (ssid) {
+             this.updateStatus({
+                connected: true,
+                ssid: ssid,
+                ip: ip,
+                message: 'Connected',
+             });
+             console.log(`✅ Already connected to "${ssid}" (IP: ${ip})`);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check current connection status:', error);
+    }
+  }
+
+  /**
+   * Get the currently connected SSID
+   */
+  private async getCurrentSSID(): Promise<string | null> {
+    try {
+      const platform = process.platform as Platform;
+      let command: string;
+
+      if (platform === Platform.LINUX) {
+        // iwgetid -r prints just the SSID
+        command = `iwgetid -r`; 
+      } else if (platform === Platform.DARWIN) {
+        command = '/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I | grep " SSID" | cut -d ":" -f 2';
+      } else {
+        return null;
+      }
+
+      const output = await this.execCommand(command);
+      const ssid = output.trim();
+      return ssid || null;
+    } catch (error) {
+        // Fallback for Linux if iwgetid fails or isn't installed
+        if (process.platform === Platform.LINUX) {
+            try {
+                const output = await this.execCommand(`iwconfig ${CONFIG.wifi.interface} 2>/dev/null | grep ESSID`);
+                // Output format: wlan0     IEEE 802.11  ESSID:"MyNetwork"
+                const match = output.match(/ESSID:"([^"]+)"/);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            } catch (e) { /* ignore */ }
+        }
+        return null;
+    }
   }
 
   /**

@@ -204,8 +204,12 @@ class BeatnikApplication {
     const wifiManager = container.resolve(WiFiManagerService);
 
     // Short Press: Show Connection State
-    this.gpioService.on('button_click', () => {
-      console.log('🔘 Button Click! Showing connection state...');
+    this.gpioService.on('button_click', async () => {
+      console.log('🔘 Button Click! Checking and showing connection state...');
+      
+      // Force a live check of the connection status
+      await wifiManager.checkCurrentConnection();
+      
       const status = wifiManager.getStatus();
       
       if (status.connected) {
