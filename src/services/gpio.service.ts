@@ -98,7 +98,7 @@ export class GpioService extends EventEmitter {
     this.sendCommand({ command: 'blink', params: { color, on_time: onTime, off_time: offTime } });
   }
 
-  public off(): void {
+  public turnOff(): void {
     this.sendCommand({ command: 'off' });
   }
 

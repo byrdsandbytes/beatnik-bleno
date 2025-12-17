@@ -39,7 +39,7 @@ class BeatnikApplication {
 
     // Indicate ready state (LED Off)
     setTimeout(() => {
-        this.gpioService.off();
+        this.gpioService.turnOff();
     }, 2000); // Wait a bit to show the startup Amber color
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
@@ -216,7 +216,7 @@ class BeatnikApplication {
 
       // Turn off after 3 seconds
       setTimeout(() => {
-          this.gpioService.off();
+          this.gpioService.turnOff();
       }, 3000);
     });
 
@@ -264,13 +264,13 @@ class BeatnikApplication {
               console.log('✅ Connected - LED: Constant Green (10s)');
               this.gpioService.setColor(0, 1, 0);
               setTimeout(() => {
-                  this.gpioService.off();
+                  this.gpioService.turnOff();
               }, 10000);
           } else if (!status.connected && status.message.startsWith('Connection failed')) {
               console.log('❌ Connection Failed - LED: Flash Red (5s)');
               this.gpioService.blink([1, 0, 0], 0.2, 0.2);
               setTimeout(() => {
-                  this.gpioService.off();
+                  this.gpioService.turnOff();
               }, 5000);
           }
       });
