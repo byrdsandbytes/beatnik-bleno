@@ -345,6 +345,7 @@ export class WiFiManagerService extends EventEmitter {
    */
   public scanNetworks(): void {
     console.log('Starting WiFi network scan...');
+    this.emit('scan-started');
     // Use nmcli to scan for networks. -t for terse, -f for fields.
     // --rescan yes forces a new scan.
     const command = `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes`;

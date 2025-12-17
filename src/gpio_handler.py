@@ -37,10 +37,8 @@ def on_button_released():
     
     if duration < 2:
         event_name = "button_click"
-    elif duration < 8:
-        event_name = "button_restart"
     else:
-        event_name = "button_reset"
+        event_name = "button_long_press"
         
     event = {"event": event_name, "duration": duration}
     sys.stdout.write(json.dumps(event) + '\n')
@@ -54,9 +52,9 @@ def set_color(r, g, b):
     """Set a solid color."""
     led.color = (r, g, b)
 
-def pulse(color=(1, 1, 1), fade_in=1, fade_out=1):
+def pulse(on_color=(1, 1, 1), off_color=(0, 0, 0), fade_in=1, fade_out=1):
     """Pulse the LED with a given color."""
-    led.pulse(fade_in_time=fade_in, fade_out_time=fade_out, on_color=tuple(color), off_color=(0, 0, 0), background=True)
+    led.pulse(fade_in_time=fade_in, fade_out_time=fade_out, on_color=tuple(on_color), off_color=tuple(off_color), background=True)
 
 def blink(color=(1, 1, 1), on_time=0.5, off_time=0.5):
     """Blink the LED with a given color."""
@@ -69,7 +67,8 @@ def turn_off():
 # --- Main Loop ---
 def listen_for_commands():
     """Read commands from stdin and execute them."""
-    turn_off() # Start with LED off
+    # Start with LED Amber (Red + Green)
+    set_color(1, 0.5, 0)
     sys.stderr.write("GPIO handler script started and listening for commands.\n")
     
     for line in sys.stdin:
@@ -81,7 +80,12 @@ def listen_for_commands():
             if command == "set_color":
                 set_color(params.get("r", 0), params.get("g", 0), params.get("b", 0))
             elif command == "pulse":
-                pulse(color=params.get("color", [0, 0, 1]), fade_in=params.get("fade_in", 1), fade_out=params.get("fade_out", 1))
+                pulse(
+                    on_color=params.get("on_color", [0, 0, 1]), 
+                    off_color=params.get("off_color", [0, 0, 0]),
+                    fade_in=params.get("fade_in", 1), 
+                    fade_out=params.get("fade_out", 1)
+                )
             elif command == "blink":
                 blink(color=params.get("color", [1, 1, 0]), on_time=params.get("on_time", 0.5), off_time=params.get("off_time", 0.5))
             elif command == "off":

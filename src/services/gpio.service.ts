@@ -43,13 +43,9 @@ export class GpioService extends EventEmitter {
               console.log('🔘 Button Click detected!');
               this.emit('button_click');
               break;
-            case 'button_restart':
-              console.log('🔄 Button Restart Hold detected!');
-              this.emit('button_restart');
-              break;
-            case 'button_reset':
-              console.log('⚠️ Button Reset Hold detected!');
-              this.emit('button_reset');
+            case 'button_long_press':
+              console.log('⏳ Button Long Press detected!');
+              this.emit('button_long_press');
               break;
             case 'button_pressed': // Legacy/Fallback
               console.log('🔘 Button press detected!');
@@ -94,15 +90,15 @@ export class GpioService extends EventEmitter {
     this.sendCommand({ command: 'set_color', params: { r, g, b } });
   }
 
-  public pulse(color: [number, number, number] = [0, 0, 1], fadeIn = 1, fadeOut = 1): void {
-    this.sendCommand({ command: 'pulse', params: { color, fade_in: fadeIn, fade_out: fadeOut } });
+  public pulse(onColor: [number, number, number] = [0, 0, 1], offColor: [number, number, number] = [0, 0, 0], fadeIn = 1, fadeOut = 1): void {
+    this.sendCommand({ command: 'pulse', params: { on_color: onColor, off_color: offColor, fade_in: fadeIn, fade_out: fadeOut } });
   }
 
   public blink(color: [number, number, number] = [1, 1, 0], onTime = 0.5, offTime = 0.5): void {
     this.sendCommand({ command: 'blink', params: { color, on_time: onTime, off_time: offTime } });
   }
 
-  public turnOff(): void {
+  public off(): void {
     this.sendCommand({ command: 'off' });
   }
 
