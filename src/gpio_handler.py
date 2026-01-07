@@ -8,7 +8,7 @@ from signal import pause
 
 # --- Pin Configuration (BCM) ---
 PIN_RED = 17
-PIN_GREEN = 18
+PIN_GREEN = 27
 PIN_BLUE = 24
 PIN_BUTTON = 26
 
