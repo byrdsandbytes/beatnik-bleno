@@ -265,7 +265,6 @@ class BeatnikApplication {
               console.error('🛑 Error starting advertising:', error);
             } else {
               console.log('✅ Advertising started successfully.');
-              this.applyLedPattern('ADVERTISING');
             }
           }
         );
