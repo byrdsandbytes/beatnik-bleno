@@ -21,6 +21,7 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  */
 class BeatnikApplication {
   private gpioService: GpioService;
+  private isConnecting = false;
 
   constructor() {}
 
@@ -35,6 +36,12 @@ class BeatnikApplication {
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
     this.setupButtonHandler(); // Setup button event listener
+    this.setupWiFiEventHandlers(); // Setup WiFi event listeners
+
+    // Indicate ready state (LED Off)
+    setTimeout(() => {
+        this.gpioService.turnOff();
+    }, 2000); // Wait a bit to show the startup Amber color
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
   }
@@ -56,13 +63,18 @@ class BeatnikApplication {
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
-      this.gpioService.setColor(0, 1, 0); // Solid green
+      // Only set to blue if we are not currently busy with WiFi operations
+      // We can check this by tracking state, but for now, let's assume
+      // if we just connected, we are in "Connected" state.
+      // The WiFi operations (scan, connect) will override this later.
+      this.gpioService.setColor(0, 0, 1); // Constant Blue
     });
 
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
-      this.gpioService.pulse([0, 0, 1]); // Back to pulsing blue
+      // If still advertising, go back to pulsing blue
+      this.gpioService.pulse([0, 0, 1]); 
     });
   }
 
@@ -196,9 +208,30 @@ class BeatnikApplication {
   private setupButtonHandler(): void {
     const wifiManager = container.resolve(WiFiManagerService);
 
-    // Short Press: Trigger WiFi Scan / Provisioning
-    this.gpioService.on('button_click', () => {
-      console.log('🎉 Button Click! Starting WiFi Provisioning Service...');
+    // Short Press: Show Connection State
+    this.gpioService.on('button_click', async () => {
+      console.log('🔘 Button Click! Checking and showing connection state...');
+      
+      // Force a live check of the connection status
+      await wifiManager.checkCurrentConnection();
+      
+      const status = wifiManager.getStatus();
+      
+      if (status.connected) {
+          this.gpioService.setColor(0, 1, 0); // Green
+      } else {
+          this.gpioService.setColor(1, 0, 0); // Red
+      }
+
+      // Turn off after 3 seconds
+      setTimeout(() => {
+          this.gpioService.turnOff();
+      }, 3000);
+    });
+
+    // Long Press: Start BLE Provisioning
+    this.gpioService.on('button_long_press', () => {
+      console.log('🎉 Button Long Press! Starting WiFi Provisioning Service...');
       
       if (bleno.state === 'poweredOn') {
         bleno.startAdvertising(
@@ -214,49 +247,56 @@ class BeatnikApplication {
         console.log('⚠️  Cannot start advertising: Bluetooth not powered on.');
       }
     });
+  }
 
-    // Medium Hold (2-8s): Restart Device
-    this.gpioService.on('button_restart', () => {
-      console.log('🔄 Button Restart Triggered! Rebooting...');
-      this.gpioService.pulse([1, 0.5, 0]); // Pulse Orange
-      
-      // Execute reboot
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { exec } = require('child_process');
-      exec('sudo reboot', (error: any) => {
-        if (error) {
-            console.error('Failed to reboot:', error);
-        }
+  /**
+   * Setup WiFi event handlers for LED feedback
+   */
+  private setupWiFiEventHandlers(): void {
+      const wifiManager = container.resolve(WiFiManagerService);
+
+      // Searching for networks = pulsing blue and amber
+      wifiManager.on('scan-started', () => {
+          console.log('🔍 WiFi Scan Started - LED: Pulsing Blue/Amber');
+          // Pulse between Blue (0,0,1) and Amber (1, 0.5, 0)
+          this.gpioService.pulse([0, 0, 1], [1, 0.5, 0], 0.5, 0.5);
       });
-    });
 
-    // Long Hold (>8s): Factory Reset
-    this.gpioService.on('button_reset', async () => {
-      console.log('⚠️ Button Reset Triggered! Clearing Config...');
-      this.gpioService.blink([1, 0, 0], 0.1, 0.1); // Fast Red Blink
-      
-      try {
-        await wifiManager.disconnect();
-        console.log('✅ Config cleared. Rebooting in 3 seconds...');
-        
-        setTimeout(() => {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const { exec } = require('child_process');
-            exec('sudo reboot');
-        }, 3000);
-      } catch (error) {
-        console.error('Failed to reset:', error);
-      }
-    });
+      // Connecting to network = pulsing green
+      // We can detect this via status updates or add a specific event. 
+      // Status update is generic, so let's check the message or add a listener to 'status-update'
+      wifiManager.on('status-update', (status: any) => {
+          if (status.message === 'Connecting...') {
+              this.isConnecting = true;
+              console.log('🔄 Connecting - LED: Pulsing Green');
+              this.gpioService.pulse([0, 1, 0], [0, 0, 0], 0.5, 0.5);
+          } else if (status.connected && status.message === 'Connected successfully') {
+              this.isConnecting = false;
+              console.log('✅ Connected - LED: Constant Green (10s)');
+              this.gpioService.setColor(0, 1, 0);
+              setTimeout(() => {
+                  this.gpioService.turnOff();
+              }, 10000);
+          } else if (!status.connected && status.message.startsWith('Connection failed')) {
+              this.isConnecting = false;
+              console.log('❌ Connection Failed - LED: Flash Red (5s)');
+              this.gpioService.blink([1, 0, 0], 0.2, 0.2);
+              setTimeout(() => {
+                  this.gpioService.turnOff();
+              }, 5000);
+          }
+      });
 
-    // Also, listen for when the scan is done to return to the idle state
-    wifiManager.on('networks-found', () => {
-      console.log('📶 Network scan complete. Returning to idle LED state.');
-      // Check if a client is connected to decide the correct state
-      // For simplicity, we'll just go back to pulsing blue.
-      // A more advanced state machine could be used here.
-      this.gpioService.pulse([0, 0, 1]);
-    });
+      // When scan is done, if we are advertising, go back to pulsing blue
+      wifiManager.on('networks-found', () => {
+          console.log('📶 Scan complete.');
+          // Restore to Constant Blue (Client Connected state)
+          // We assume a client is connected because they requested the scan.
+          // Only do this if we are NOT currently trying to connect
+          if (!this.isConnecting) {
+             this.gpioService.setColor(0, 0, 1); 
+          }
+      });
   }
 }
 
