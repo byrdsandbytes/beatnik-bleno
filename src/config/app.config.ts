@@ -23,45 +23,45 @@ export const CONFIG = {
 } as const;
 
 export const LED_CONFIG = {
-  // Bluetooth Advertise: Pulse Blue
+  // Bluetooth Advertise: Pulse Blue (Dimmed)
   ADVERTISING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0, 0, 0], fade_in: 1, fade_out: 1 } 
+    params: { on_color: [0, 0, 0.2], off_color: [0, 0, 0], fade_in: 1, fade_out: 1 } 
   },
-  // Client Connected: Solid Blue
+  // Client Connected: Solid Blue (Dimmed)
   CLIENT_CONNECTED: { 
     command: 'set_color', 
-    params: { r: 0, g: 0, b: 1 } 
+    params: { r: 0, g: 0, b: 0.2 } 
   },
-  // WiFi Scanning: Pulse Blue/Amber
+  // WiFi Scanning: Pulse Blue/Amber (Dimmed)
   SCANNING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0.7, 0.5, 0], fade_in: 0.5, fade_out: 0.5 } 
+    params: { on_color: [0, 0, 0.2], off_color: [0.15, 0.1, 0], fade_in: 0.5, fade_out: 0.5 } 
   },
-  // WiFi Connecting: Pulse Green
+  // WiFi Connecting: Pulse Green (Dimmed)
   CONNECTING: { 
     command: 'pulse', 
-    params: { on_color: [0, 1, 0], off_color: [0, 0, 0], fade_in: 0.5, fade_out: 0.5 } 
+    params: { on_color: [0, 0.2, 0], off_color: [0, 0, 0], fade_in: 0.5, fade_out: 0.5 } 
   },
-  // WiFi Provisioned/Connected: Solid Green
+  // WiFi Provisioned/Connected: Solid Green (Dimmed)
   PROVISIONED: { 
     command: 'set_color', 
-    params: { r: 0, g: 1, b: 0 } 
+    params: { r: 0, g: 0.2, b: 0 } 
   },
-  // Error: Fast Blink Red
+  // Error: Fast Blink Red (Dimmed)
   ERROR: { 
     command: 'blink', 
-    params: { color: [1, 0, 0], on_time: 0.2, off_time: 0.2 } 
+    params: { color: [0.2, 0, 0], on_time: 0.2, off_time: 0.2 } 
   },
-  // Button Check Success: Solid Green
+  // Button Check Success: Solid Green (Dimmed)
   CHECK_SUCCESS: { 
     command: 'set_color', 
-    params: { r: 0, g: 0.4, b: 0 } 
+    params: { r: 0, g: 0.2, b: 0 } 
   },
-  // Button Check Fail: Solid Red
+  // Button Check Fail: Solid Red (Dimmed)
   CHECK_FAIL: { 
     command: 'set_color', 
-    params: { r: 0.8, g: 0, b: 0 } 
+    params: { r: 0.2, g: 0, b: 0 } 
   },
   // Off
   OFF: {
