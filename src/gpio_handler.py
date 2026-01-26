@@ -69,7 +69,7 @@ def turn_off():
 def listen_for_commands():
     """Read commands from stdin and execute them."""
     # Start with LED Amber (Red + Green)
-    set_color(1, 0.5, 0)
+    set_color(0.1, 0.5, 0)
     sys.stderr.write("GPIO handler script started and listening for commands.\n")
     
     for line in sys.stdin:
