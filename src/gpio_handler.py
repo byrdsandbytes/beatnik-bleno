@@ -17,7 +17,8 @@ try:
     # Initialize RGB LED as a common-anode type
     led = RGBLED(red=PIN_RED, green=PIN_GREEN, blue=PIN_BLUE, active_high=False)
     # Initialize Button (pull_up=True since it's connected to GND)
-    button = Button(PIN_BUTTON, pull_up=True)
+    # Added bounce_time to prevent "Short Press" (Status Check) from firing immediately after "Long Press" release
+    button = Button(PIN_BUTTON, pull_up=True, bounce_time=0.05)
 except Exception as e:
     sys.stderr.write(f"Error initializing GPIO: {e}\n")
     sys.exit(1)
