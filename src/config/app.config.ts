@@ -31,12 +31,12 @@ export const LED_CONFIG = {
   // Client Connected: Solid Blue
   CLIENT_CONNECTED: { 
     command: 'set_color', 
-    params: { r: 0, g: 0.1, b: 0.6 } 
+    params: { r: 0, g: 0.4, b: 0.6 } 
   },
   // WiFi Scanning: Pulse Blue/Amber
   SCANNING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0.5, 0.5, 0], fade_in: 0.5, fade_out: 0.5 } 
+    params: { on_color: [0, 0, 1], off_color: [0.5, 0.4, 0], fade_in: 0.5, fade_out: 0.5 } 
   },
   // WiFi Connecting: Pulse Green
   CONNECTING: { 
@@ -61,7 +61,7 @@ export const LED_CONFIG = {
   // Button Check Fail: Solid Red
   CHECK_FAIL: { 
     command: 'set_color', 
-    params: { r: 1, g: 0, b: 0 } 
+    params: { r: 0.5, g: 0.4, b: 0 } 
   },
   // Off
   OFF: {
