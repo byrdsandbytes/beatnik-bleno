@@ -1,10 +1,12 @@
-import { injectable } from 'tsyringe';
+import { injectable, inject } from 'tsyringe';
 import { EventEmitter } from 'events';
 import { exec } from 'child_process';
 import { promises as fs } from 'fs';
 import os from 'os';
 import { WiFiCredentials, WiFiStatus, Network, Platform } from '../models/wifi.model';
 import { CONFIG } from '../config/app.config';
+import { StateService } from './state.service';
+import { ProvisioningState } from '../models/state.model';
 
 /**
  * WiFi Manager Service
@@ -14,16 +16,9 @@ import { CONFIG } from '../config/app.config';
  */
 @injectable()
 export class WiFiManagerService extends EventEmitter {
-  private status: WiFiStatus = {
-    connected: false,
-    ssid: null,
-    ip: null,
-    hostname: null,
-    deviceId: null,
-    message: 'Not connected',
-  };
-
-  constructor() {
+  constructor(
+    @inject(StateService) private stateService: StateService
+  ) {
     super();
     this.initializeService();
   }
@@ -109,6 +104,7 @@ export class WiFiManagerService extends EventEmitter {
     console.log(`\n🔄 Attempting to connect to "${credentials.ssid}"...`);
 
     try {
+      this.stateService.updateProvisioningState(ProvisioningState.CONNECTING_WIFI);
       this.updateStatus({
         connected: false,
         ssid: credentials.ssid,
@@ -143,6 +139,7 @@ export class WiFiManagerService extends EventEmitter {
           hostname,
           message: 'Connected successfully',
         });
+        this.stateService.updateProvisioningState(ProvisioningState.PROVISIONED);
         console.log(`✅ Connected to "${credentials.ssid}" (IP: ${ip}, Hostname: ${hostname})`);
       } else {
         throw new Error('Connection verification failed');
@@ -157,6 +154,8 @@ export class WiFiManagerService extends EventEmitter {
         hostname: null,
         message: `Connection failed: ${errorMessage}`,
       });
+      this.stateService.updateProvisioningState(ProvisioningState.ERROR);
+      this.stateService.setError(errorMessage);
       throw error;
     }
   }
@@ -368,15 +367,18 @@ export class WiFiManagerService extends EventEmitter {
    * Get current WiFi status
    */
   public getStatus(): WiFiStatus {
-    return { ...this.status };
+    return this.stateService.state.wifiStatus;
   }
 
   /**
    * Update status and emit event
    */
   private updateStatus(status: Partial<WiFiStatus>): void {
-    this.status = { ...this.status, ...status };
-    this.emit('status-update', this.status);
+    // Update central state
+    this.stateService.updateWiFiStatus(status);
+    
+    // Emit event for backward compatibility
+    this.emit('status-update', this.stateService.state.wifiStatus);
   }
 
   /**
@@ -409,6 +411,7 @@ export class WiFiManagerService extends EventEmitter {
    */
   public scanNetworks(): void {
     console.log('Starting WiFi network scan...');
+    this.stateService.updateProvisioningState(ProvisioningState.SCANNING);
     this.emit('scan-started');
     // Use nmcli to scan for networks. -t for terse, -f for fields.
     // --rescan yes forces a new scan.
@@ -418,6 +421,7 @@ export class WiFiManagerService extends EventEmitter {
       if (error) {
         console.error(`Error scanning for networks: ${error.message}`);
         this.emit('error', new Error('Failed to scan for networks.'));
+        this.stateService.updateProvisioningState(ProvisioningState.IDLE); // Go back to idle or error?
         return;
       }
       if (stderr) {
@@ -432,6 +436,7 @@ export class WiFiManagerService extends EventEmitter {
         this.checkPossibleScanIssues();
       }
 
+      this.stateService.updateProvisioningState(ProvisioningState.IDLE);
       this.emit('networks-found', networks);
     });
   }
