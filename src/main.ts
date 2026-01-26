@@ -43,7 +43,6 @@ class BeatnikApplication {
    */
   public async bootstrap(): Promise<void> {
     console.log('🥦 Starting Beatnik WiFi Provisioning Service...\n');
-    this.applyLedPattern('OFF'); // Initial LED Pattern
 
     this.setupDependencyInjection();
     this.gpioService = container.resolve(GpioService); // Resolve the service
