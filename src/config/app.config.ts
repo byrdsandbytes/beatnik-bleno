@@ -56,12 +56,12 @@ export const LED_CONFIG = {
   // Button Check Success: Solid Green
   CHECK_SUCCESS: { 
     command: 'set_color', 
-    params: { r: 0, g: 1, b: 0 } 
+    params: { r: 0, g: 0.4, b: 0 } 
   },
   // Button Check Fail: Solid Red
   CHECK_FAIL: { 
     command: 'set_color', 
-    params: { r: 1, g: 0, b: 0 } 
+    params: { r: 0.8, g: 0, b: 0 } 
   },
   // Off
   OFF: {
