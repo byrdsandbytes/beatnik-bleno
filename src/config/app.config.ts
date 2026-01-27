@@ -36,12 +36,12 @@ export const LED_CONFIG = {
   // WiFi Scanning: Pulse Blue/Amber
   SCANNING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0.4, 0.6, 0], fade_in: 0.5, fade_out: 0.5 } 
+    params: { on_color: [0, 0, 1], off_color: [0.2, 0.4, 0.46], fade_in: 0.5, fade_out: 0.5 } 
   },
   // WiFi Connecting: Pulse Green
   CONNECTING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0.9, 0.1], off_color: [0, 0, 0], fade_in: 0.5, fade_out: 0.5 } 
+    params: { on_color: [0, 0.9, 0.1], off_color: [0.2, 0.4, 0.46], fade_in: 0.5, fade_out: 0.5 } 
   },
   // WiFi Provisioned/Connected: Solid Green
   PROVISIONED: { 
@@ -53,10 +53,10 @@ export const LED_CONFIG = {
     command: 'blink', 
     params: { color: [1, 0, 0], on_time: 0.2, off_time: 0.2 } 
   },
-  // Button Check Success: Solid Green
+  // Button Check Success: Cream white
   CHECK_SUCCESS: { 
     command: 'set_color', 
-    params: { r: 0, g: 0.9, b: 0.1 } 
+    params: { r: 0.2, g: 0.4, b: 0.46 } 
   },
   // Button Check Fail: Solid Red
   CHECK_FAIL: { 
