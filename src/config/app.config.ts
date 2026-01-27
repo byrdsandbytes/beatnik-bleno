@@ -22,4 +22,57 @@ export const CONFIG = {
   },
 } as const;
 
+export const LED_CONFIG = {
+  // Bluetooth Advertise: Pulse Blue
+  ADVERTISING: { 
+    command: 'pulse', 
+    params: { on_color: [0, 0.1, 0.8], off_color: [0, 0, 0], fade_in: 1, fade_out: 1 } 
+  },
+  // Client Connected: Solid Blue
+  CLIENT_CONNECTED: { 
+    command: 'set_color', 
+    params: { r: 0, g: 0.1, b: 0.8 } 
+  },
+  // WiFi Scanning: Pulse Blue/Amber
+  SCANNING: { 
+    command: 'pulse', 
+    params: { on_color: [0, 0, 1], off_color: [0.2, 0.4, 0.46], fade_in: 0.5, fade_out: 0.5 } 
+  },
+  // WiFi Connecting: Pulse Green
+  CONNECTING: { 
+    command: 'pulse', 
+    params: { on_color: [0, 0.9, 0.1], off_color: [0.2, 0.4, 0.46], fade_in: 0.5, fade_out: 0.5 } 
+  },
+  // WiFi Provisioned/Connected: Solid Green
+  PROVISIONED: { 
+    command: 'set_color', 
+    params: { r: 0, g: 0.9, b: 0.1 } 
+  },
+  // Error: Fast Blink Red
+  ERROR: { 
+    command: 'blink', 
+    params: { color: [1, 0, 0], on_time: 0.2, off_time: 0.2 } 
+  },
+  // Button Check Success: Cream white
+  CHECK_SUCCESS: { 
+    command: 'set_color', 
+    params: { r: 0.2, g: 0.4, b: 0.46 } 
+  },
+  // Button Check Fail: Solid Red
+  CHECK_FAIL: { 
+    command: 'set_color', 
+    params: { r: 0.4, g: 0.5, b: 0 } 
+  },
+  // Off
+  OFF: {
+    command: 'off'
+  },
+  // Initial State: Solid Amber than White
+  INITIAL: {
+    command: 'pulse',
+    params: { on_color: [0.3, 0.5, 0], off_color: [0.5, 0.5, 0.5], fade_in: 2, fade_out: 2 }
+  }
+} as const;
+
 export type AppConfig = typeof CONFIG;
+
