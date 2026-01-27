@@ -70,6 +70,7 @@ class BeatnikApplication {
     bleno.disconnect(); // Force disconnect if any client is connected
     this.stopProvisioningTimer();
     console.log('🛑 Bluetooth stopped.');
+    this.applyLedPattern('OFF');
   }
 
   /**
@@ -348,14 +349,13 @@ class BeatnikApplication {
                   this.applyLedPattern('PROVISIONED');
                   setTimeout(() => {
                       this.stopBluetooth();
-                      this.applyLedPattern('OFF');
                   }, 10000);
                   break;
               case ProvisioningState.ERROR:
                    console.log('❌ Error - LED: Flash Red (5s)');
                    this.applyLedPattern('ERROR');
                    setTimeout(() => {
-                       this.applyLedPattern('OFF');
+                       this.applyLedPattern('CLIENT_CONNECTED');
                    }, 5000);
                    break;
               case ProvisioningState.IDLE:
