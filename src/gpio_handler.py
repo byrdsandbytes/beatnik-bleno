@@ -69,7 +69,7 @@ def turn_off():
 def listen_for_commands():
     """Read commands from stdin and execute them."""
     # Start with LED Amber (Red + Green)
-    set_color(0.15, 0.25, 0.15)
+    set_color(0.15, 0.2, 0.15)
     # timeout 2 seconds then white
     # led.pulse(fade_in_time=2, fade_out_time=2, on_color=(0.5, 0.5, 0.5), off_color=(0, 0, 0), background=True)
     # # Indicate readiness by pulse red than green than blue
