@@ -25,6 +25,8 @@ class BeatnikApplication {
   private gpioService: GpioService;
   private stateService: StateService;
   private previousProvisioningState: ProvisioningState = ProvisioningState.IDLE;
+  private provisioningTimer: NodeJS.Timeout | null = null;
+  private readonly PROVISIONING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
   constructor() {}
 
@@ -36,6 +38,38 @@ class BeatnikApplication {
       if (!config) return;
 
       this.gpioService.sendCommand(config);
+  }
+
+  /**
+   * Start the provisioning inactivity timer
+   */
+  private startProvisioningTimer(): void {
+    this.stopProvisioningTimer();
+    console.log(`⏳ Starting provisioning timer (${this.PROVISIONING_TIMEOUT_MS / 1000 / 60}m)...`);
+    this.provisioningTimer = setTimeout(() => {
+      console.log('⏰ Provisioning timeout reached. Stopping Bluetooth...');
+      this.stopBluetooth();
+    }, this.PROVISIONING_TIMEOUT_MS);
+  }
+
+  /**
+   * Stop the provisioning inactivity timer
+   */
+  private stopProvisioningTimer(): void {
+    if (this.provisioningTimer) {
+      clearTimeout(this.provisioningTimer);
+      this.provisioningTimer = null;
+    }
+  }
+
+  /**
+   * Helper to stop Bluetooth advertising and disconnect
+   */
+  private stopBluetooth(): void {
+    bleno.stopAdvertising();
+    bleno.disconnect(); // Force disconnect if any client is connected
+    this.stopProvisioningTimer();
+    console.log('🛑 Bluetooth stopped.');
   }
 
   /**
@@ -79,12 +113,20 @@ class BeatnikApplication {
       this.onAdvertisingStart(error);
       if (!error) {
         this.stateService.updateBleState(BleState.ADVERTISING);
+        this.startProvisioningTimer();
       }
+    });
+
+    // Handle advertising stop
+    bleno.on('advertisingStop', () => {
+      console.log('🛑 Advertising stopped');
+      this.stopProvisioningTimer();
     });
 
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
+      this.stopProvisioningTimer();
       this.stateService.updateBleState(BleState.CONNECTED);
       
       // Only set to blue if we are not currently busy with WiFi operations
@@ -98,6 +140,7 @@ class BeatnikApplication {
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
       this.stateService.updateBleState(BleState.ADVERTISING); // Assume back to advertising
+      this.startProvisioningTimer();
       // If still advertising, go back to pulsing blue
       this.applyLedPattern('ADVERTISING');
     });
@@ -304,6 +347,7 @@ class BeatnikApplication {
                   console.log('✅ Connected - LED: Constant Green (10s)');
                   this.applyLedPattern('PROVISIONED');
                   setTimeout(() => {
+                      this.stopBluetooth();
                       this.applyLedPattern('OFF');
                   }, 10000);
                   break;
