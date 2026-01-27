@@ -27,6 +27,7 @@ class BeatnikApplication {
   private previousProvisioningState: ProvisioningState = ProvisioningState.IDLE;
   private provisioningTimer: NodeJS.Timeout | null = null;
   private readonly PROVISIONING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  private isStopping = false;
 
   constructor() {}
 
@@ -66,6 +67,7 @@ class BeatnikApplication {
    * Helper to stop Bluetooth advertising and disconnect
    */
   private stopBluetooth(): void {
+    this.isStopping = true;
     bleno.stopAdvertising();
     bleno.disconnect(); // Force disconnect if any client is connected
     this.stopProvisioningTimer();
@@ -140,6 +142,12 @@ class BeatnikApplication {
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
+
+      if (this.isStopping) {
+          console.log('🛑 Ignoring disconnect event (stopping)...');
+          return;
+      }
+
       this.stateService.updateBleState(BleState.ADVERTISING); // Assume back to advertising
       this.startProvisioningTimer();
       // If still advertising, go back to pulsing blue
@@ -305,6 +313,7 @@ class BeatnikApplication {
     this.gpioService.on('button_long_press', () => {
       console.log('🎉 Button Long Press! Starting WiFi Provisioning Service...');
       
+      this.isStopping = false;
       if (bleno.state === 'poweredOn') {
         bleno.startAdvertising(
           CONFIG.bluetooth.deviceName,
