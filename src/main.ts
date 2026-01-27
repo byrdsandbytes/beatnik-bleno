@@ -53,9 +53,9 @@ class BeatnikApplication {
     this.setupWiFiEventHandlers(); // Setup WiFi event listeners
 
     // Initial LED Pattern: Solid Amber then White
-    setTimeout(() => {
-        this.applyLedPattern('INITIAL');
-    }, 2000); // Slight delay to ensure GPIO service is ready
+    // setTimeout(() => {
+    //     this.applyLedPattern('INITIAL');
+    // }, 2000); // Slight delay to ensure GPIO service is ready
 
     // Indicate ready state (LED Off)
     setTimeout(() => {
