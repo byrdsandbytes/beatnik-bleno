@@ -55,8 +55,7 @@ class BeatnikApplication {
     // Initial LED Pattern: Solid Amber then White
     setTimeout(() => {
         this.applyLedPattern('INITIAL');
-    }, 500); // Slight delay to ensure GPIO service is ready
-    this.applyLedPattern('INITIAL');
+    }, 2000); // Slight delay to ensure GPIO service is ready
 
     // Indicate ready state (LED Off)
     setTimeout(() => {

@@ -70,7 +70,7 @@ export const LED_CONFIG = {
   // Initial State: Solid Amber than White
   INITIAL: {
     command: 'pulse',
-    params: { on_color: [0.5, 0.5, 0], off_color: [1, 1, 1], fade_in: 2, fade_out: 2 }
+    params: { on_color: [0.3, 0.5, 0], off_color: [0.5, 0.5, 0.5], fade_in: 2, fade_out: 2 }
   }
 } as const;
 
