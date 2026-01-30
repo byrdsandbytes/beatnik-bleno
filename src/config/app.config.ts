@@ -36,7 +36,7 @@ export const LED_CONFIG = {
   // WiFi Scanning: Pulse Blue/Amber
   SCANNING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0.2, 0.4, 0.46], fade_in: 1, fade_out: 1 } 
+    params: { on_color: [0, 0.1, 0.8], off_color: [0.2, 0.4, 0.46], fade_in: 1, fade_out: 1 } 
   },
   // WiFi Connecting: Pulse Green
   CONNECTING: { 
