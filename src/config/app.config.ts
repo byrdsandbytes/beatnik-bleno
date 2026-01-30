@@ -26,7 +26,7 @@ export const LED_CONFIG = {
   // Bluetooth Advertise: Pulse Blue
   ADVERTISING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0.1, 0.8], off_color: [0, 0, 0], fade_in: 2, fade_out: 2 } 
+    params: { on_color: [0, 0.1, 0.8], off_color: [0, 0, 0], fade_in: 1, fade_out: 1 } 
   },
   // Client Connected: Solid Blue
   CLIENT_CONNECTED: { 
@@ -36,12 +36,12 @@ export const LED_CONFIG = {
   // WiFi Scanning: Pulse Blue/Amber
   SCANNING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0, 1], off_color: [0.2, 0.4, 0.46], fade_in: 2, fade_out: 2 } 
+    params: { on_color: [0, 0, 1], off_color: [0.2, 0.4, 0.46], fade_in: 1, fade_out: 1 } 
   },
   // WiFi Connecting: Pulse Green
   CONNECTING: { 
     command: 'pulse', 
-    params: { on_color: [0, 0.9, 0.1], off_color: [0.2, 0.4, 0.46], fade_in: 2, fade_out: 2 } 
+    params: { on_color: [0, 0.9, 0.1], off_color: [0.2, 0.4, 0.46], fade_in: 1, fade_out: 1 } 
   },
   // WiFi Provisioned/Connected: Solid Green
   PROVISIONED: { 
