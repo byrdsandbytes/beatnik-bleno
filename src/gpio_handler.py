@@ -17,7 +17,8 @@ try:
     # Initialize RGB LED as a common-anode type
     led = RGBLED(red=PIN_RED, green=PIN_GREEN, blue=PIN_BLUE, active_high=False)
     # Initialize Button (pull_up=True since it's connected to GND)
-    button = Button(PIN_BUTTON, pull_up=True)
+    # Added bounce_time to prevent "Short Press" (Status Check) from firing immediately after "Long Press" release
+    button = Button(PIN_BUTTON, pull_up=True, bounce_time=0.05)
 except Exception as e:
     sys.stderr.write(f"Error initializing GPIO: {e}\n")
     sys.exit(1)
@@ -68,7 +69,14 @@ def turn_off():
 def listen_for_commands():
     """Read commands from stdin and execute them."""
     # Start with LED Amber (Red + Green)
-    set_color(1, 0.5, 0)
+    set_color(0.2, 0.4, 0.46)
+    # timeout 2 seconds then white
+    # led.pulse(fade_in_time=2, fade_out_time=2, on_color=(0.5, 0.5, 0.5), off_color=(0, 0, 0), background=True)
+    # # Indicate readiness by pulse red than green than blue
+    # led.pulse(fade_in_time=0.5, fade_out_time=0.5, on_color=(1, 0, 0), off_color=(0, 0, 0), background=True)
+    # led.pulse(fade_in_time=0.5, fade_out_time=0.5, on_color=(0, 1, 0), off_color=(0, 0, 0), background=True)
+    # led.pulse(fade_in_time=0.5, fade_out_time=0.5, on_color=(0, 0, 1), off_color=(0, 0, 0), background=True)
+    
     sys.stderr.write("GPIO handler script started and listening for commands.\n")
     
     for line in sys.stdin:

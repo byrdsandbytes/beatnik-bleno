@@ -1,6 +1,6 @@
 {
   "name": "beatnik-bleno",
-  "version": "1.0.0",
+  "version": "0.4.0",
   "description": "WiFi provisioning service using Bleno for Beatnik device",
   "main": "dist/main.js",
   "scripts": {

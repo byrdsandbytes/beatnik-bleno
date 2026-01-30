@@ -5,13 +5,15 @@ const bleno = require('@abandonware/bleno');
 import { container } from 'tsyringe';
 import { WiFiManagerService } from './services/wifi-manager.service';
 import { GpioService } from './services/gpio.service';
+import { StateService } from './services/state.service';
+import { AppState, ProvisioningState, BleState } from './models/state.model';
 import {
   SsidCharacteristic,
   PasswordCharacteristic,
   ConnectCharacteristic,
   StatusCharacteristic,
 } from './characteristics/base.characteristic';
-import { CONFIG } from './config/app.config';
+import { CONFIG, LED_CONFIG } from './config/app.config';
 import { ScanNetworksCharacteristic } from './characteristics/scan-networks.characteristic';
 import { NetworkListCharacteristic } from './characteristics/network-list.characteristic';
 
@@ -21,9 +23,57 @@ import { NetworkListCharacteristic } from './characteristics/network-list.charac
  */
 class BeatnikApplication {
   private gpioService: GpioService;
-  private isConnecting = false;
+  private stateService: StateService;
+  private previousProvisioningState: ProvisioningState = ProvisioningState.IDLE;
+  private provisioningTimer: NodeJS.Timeout | null = null;
+  private readonly PROVISIONING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+  private isStopping = false;
 
   constructor() {}
+
+  /**
+   * Helper to apply LED pattern from config
+   */
+  private applyLedPattern(patternKey: keyof typeof LED_CONFIG): void {
+      const config = LED_CONFIG[patternKey];
+      if (!config) return;
+
+      this.gpioService.sendCommand(config);
+  }
+
+  /**
+   * Start the provisioning inactivity timer
+   */
+  private startProvisioningTimer(): void {
+    this.stopProvisioningTimer();
+    console.log(`⏳ Starting provisioning timer (${this.PROVISIONING_TIMEOUT_MS / 1000 / 60}m)...`);
+    this.provisioningTimer = setTimeout(() => {
+      console.log('⏰ Provisioning timeout reached. Stopping Bluetooth...');
+      this.stopBluetooth();
+    }, this.PROVISIONING_TIMEOUT_MS);
+  }
+
+  /**
+   * Stop the provisioning inactivity timer
+   */
+  private stopProvisioningTimer(): void {
+    if (this.provisioningTimer) {
+      clearTimeout(this.provisioningTimer);
+      this.provisioningTimer = null;
+    }
+  }
+
+  /**
+   * Helper to stop Bluetooth advertising and disconnect
+   */
+  private stopBluetooth(): void {
+    this.isStopping = true;
+    bleno.stopAdvertising();
+    bleno.disconnect(); // Force disconnect if any client is connected
+    this.stopProvisioningTimer();
+    console.log('🛑 Bluetooth stopped.');
+    this.applyLedPattern('OFF');
+  }
 
   /**
    * Bootstrap the application
@@ -33,14 +83,20 @@ class BeatnikApplication {
 
     this.setupDependencyInjection();
     this.gpioService = container.resolve(GpioService); // Resolve the service
+    this.stateService = container.resolve(StateService); // Resolve state service
     this.setupBlenoEventHandlers();
     this.setupGracefulShutdown();
     this.setupButtonHandler(); // Setup button event listener
     this.setupWiFiEventHandlers(); // Setup WiFi event listeners
 
+    // Initial LED Pattern: Solid Amber then White
+    // setTimeout(() => {
+    //     this.applyLedPattern('INITIAL');
+    // }, 2000); // Slight delay to ensure GPIO service is ready
+
     // Indicate ready state (LED Off)
     setTimeout(() => {
-        this.gpioService.turnOff();
+        this.applyLedPattern('OFF');
     }, 2000); // Wait a bit to show the startup Amber color
 
     console.log('💡 Press Ctrl+C to stop the service.\n');
@@ -58,23 +114,44 @@ class BeatnikApplication {
     // Handle advertising start
     bleno.on('advertisingStart', (error: any) => {
       this.onAdvertisingStart(error);
+      if (!error) {
+        this.stateService.updateBleState(BleState.ADVERTISING);
+        this.startProvisioningTimer();
+      }
+    });
+
+    // Handle advertising stop
+    bleno.on('advertisingStop', () => {
+      console.log('🛑 Advertising stopped');
+      this.stopProvisioningTimer();
     });
 
     // Handle client connections
     bleno.on('accept', (clientAddress: string) => {
       console.log(`\n🔗 Client connected: ${clientAddress}`);
+      this.stopProvisioningTimer();
+      this.stateService.updateBleState(BleState.CONNECTED);
+      
       // Only set to blue if we are not currently busy with WiFi operations
-      // We can check this by tracking state, but for now, let's assume
-      // if we just connected, we are in "Connected" state.
-      // The WiFi operations (scan, connect) will override this later.
-      this.gpioService.setColor(0, 0, 1); // Constant Blue
+      const provState = this.stateService.state.provisioning;
+      if (provState === ProvisioningState.IDLE || provState === ProvisioningState.PROVISIONED) {
+         this.applyLedPattern('CLIENT_CONNECTED');
+      }
     });
 
     // Handle client disconnections
     bleno.on('disconnect', (clientAddress: string) => {
       console.log(`\n🔌 Client disconnected: ${clientAddress}`);
+
+      if (this.isStopping) {
+          console.log('🛑 Ignoring disconnect event (stopping)...');
+          return;
+      }
+
+      this.stateService.updateBleState(BleState.ADVERTISING); // Assume back to advertising
+      this.startProvisioningTimer();
       // If still advertising, go back to pulsing blue
-      this.gpioService.pulse([0, 0, 1]); 
+      this.applyLedPattern('ADVERTISING');
     });
   }
 
@@ -86,8 +163,10 @@ class BeatnikApplication {
 
     if (state === 'poweredOn') {
       console.log('✅ Bluetooth powered on. Waiting for button press to start advertising...');
+      this.stateService.updateBleState(BleState.POWERED_ON);
     } else {
       console.log('⚠️  Bluetooth not ready, stopping advertising...');
+      this.stateService.updateBleState(BleState.UNKNOWN);
       bleno.stopAdvertising();
     }
   }
@@ -101,7 +180,7 @@ class BeatnikApplication {
       return;
     }
 
-    this.gpioService.pulse([0, 0, 1]); // Pulse blue to indicate advertising
+    this.applyLedPattern('ADVERTISING');
 
     console.log(`\n🥦 Advertising as "${CONFIG.bluetooth.deviceName}"`);
     console.log(`   Service UUID: ${CONFIG.bluetooth.serviceUuid}`);
@@ -182,6 +261,7 @@ class BeatnikApplication {
    * Setup dependency injection
    */
   private setupDependencyInjection(): void {
+    container.registerSingleton('StateService', StateService);
     container.registerSingleton('WiFiManagerService', WiFiManagerService);
     container.registerSingleton('GpioService', GpioService);
     container.register('SsidCharacteristic', { useClass: SsidCharacteristic });
@@ -218,14 +298,14 @@ class BeatnikApplication {
       const status = wifiManager.getStatus();
       
       if (status.connected) {
-          this.gpioService.setColor(0, 1, 0); // Green
+          this.applyLedPattern('CHECK_SUCCESS');
       } else {
-          this.gpioService.setColor(1, 0, 0); // Red
+          this.applyLedPattern('CHECK_FAIL');
       }
 
       // Turn off after 3 seconds
       setTimeout(() => {
-          this.gpioService.turnOff();
+          this.applyLedPattern('OFF');
       }, 3000);
     });
 
@@ -233,6 +313,7 @@ class BeatnikApplication {
     this.gpioService.on('button_long_press', () => {
       console.log('🎉 Button Long Press! Starting WiFi Provisioning Service...');
       
+      this.isStopping = false;
       if (bleno.state === 'poweredOn') {
         bleno.startAdvertising(
           CONFIG.bluetooth.deviceName,
@@ -240,6 +321,8 @@ class BeatnikApplication {
           (error: any) => {
             if (error) {
               console.error('🛑 Error starting advertising:', error);
+            } else {
+              console.log('✅ Advertising started successfully.');
             }
           }
         );
@@ -253,48 +336,43 @@ class BeatnikApplication {
    * Setup WiFi event handlers for LED feedback
    */
   private setupWiFiEventHandlers(): void {
-      const wifiManager = container.resolve(WiFiManagerService);
-
-      // Searching for networks = pulsing blue and amber
-      wifiManager.on('scan-started', () => {
-          console.log('🔍 WiFi Scan Started - LED: Pulsing Blue/Amber');
-          // Pulse between Blue (0,0,1) and Amber (1, 0.5, 0)
-          this.gpioService.pulse([0, 0, 1], [1, 0.5, 0], 0.5, 0.5);
-      });
-
-      // Connecting to network = pulsing green
-      // We can detect this via status updates or add a specific event. 
-      // Status update is generic, so let's check the message or add a listener to 'status-update'
-      wifiManager.on('status-update', (status: any) => {
-          if (status.message === 'Connecting...') {
-              this.isConnecting = true;
-              console.log('🔄 Connecting - LED: Pulsing Green');
-              this.gpioService.pulse([0, 1, 0], [0, 0, 0], 0.5, 0.5);
-          } else if (status.connected && status.message === 'Connected successfully') {
-              this.isConnecting = false;
-              console.log('✅ Connected - LED: Constant Green (10s)');
-              this.gpioService.setColor(0, 1, 0);
-              setTimeout(() => {
-                  this.gpioService.turnOff();
-              }, 10000);
-          } else if (!status.connected && status.message.startsWith('Connection failed')) {
-              this.isConnecting = false;
-              console.log('❌ Connection Failed - LED: Flash Red (5s)');
-              this.gpioService.blink([1, 0, 0], 0.2, 0.2);
-              setTimeout(() => {
-                  this.gpioService.turnOff();
-              }, 5000);
+      this.stateService.on('stateChanged', (state: AppState) => {
+          // Detect state transition
+          if (state.provisioning === this.previousProvisioningState) {
+              return;
           }
-      });
+          
+          this.previousProvisioningState = state.provisioning;
 
-      // When scan is done, if we are advertising, go back to pulsing blue
-      wifiManager.on('networks-found', () => {
-          console.log('📶 Scan complete.');
-          // Restore to Constant Blue (Client Connected state)
-          // We assume a client is connected because they requested the scan.
-          // Only do this if we are NOT currently trying to connect
-          if (!this.isConnecting) {
-             this.gpioService.setColor(0, 0, 1); 
+          switch (state.provisioning) {
+              case ProvisioningState.SCANNING:
+                  console.log('🔍 WiFi Scan Started - LED: Pulsing Blue/Amber');
+                  this.applyLedPattern('SCANNING');
+                  break;
+              case ProvisioningState.CONNECTING_WIFI:
+                  console.log('🔄 Connecting - LED: Pulsing Green');
+                  this.applyLedPattern('CONNECTING');
+                  break;
+              case ProvisioningState.PROVISIONED:
+                  console.log('✅ Connected - LED: Constant Green (10s)');
+                  this.applyLedPattern('PROVISIONED');
+                  setTimeout(() => {
+                      this.stopBluetooth();
+                  }, 10000);
+                  break;
+              case ProvisioningState.ERROR:
+                   console.log('❌ Error - LED: Flash Red (5s)');
+                   this.applyLedPattern('ERROR');
+                   setTimeout(() => {
+                       this.applyLedPattern('CLIENT_CONNECTED');
+                   }, 5000);
+                   break;
+              case ProvisioningState.IDLE:
+                 // Restore to Constant Blue (Client Connected state) if BLE connected
+                 if (state.ble === BleState.CONNECTED) {
+                     this.applyLedPattern('CLIENT_CONNECTED');
+                 }
+                 break;
           }
       });
   }
