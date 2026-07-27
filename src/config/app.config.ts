@@ -71,6 +71,21 @@ export const LED_CONFIG = {
   INITIAL: {
     command: 'pulse',
     params: { on_color: [0.3, 0.5, 0], off_color: [0.5, 0.5, 0.5], fade_in: 2, fade_out: 2 }
+  },
+  // Pending Action: Pulse yellow to red
+  PENDING_ACTION: {
+    command: 'pulse',
+    params: { on_color: [1, 0, 0], off_color: [1, 1, 0], fade_in: 1, fade_out: 1 }
+  },
+  // Restarting: Blink green twice (we simulate this by blinking fast)
+  RESTARTING: {
+    command: 'blink',
+    params: { color: [0, 1, 0], on_time: 0.2, off_time: 0.2 }
+  },
+  // Resetting: Blink yellow twice (we simulate this by blinking fast)
+  RESETTING: {
+    command: 'blink',
+    params: { color: [1, 1, 0], on_time: 0.2, off_time: 0.2 }
   }
 } as const;
 

@@ -6,7 +6,7 @@ import { container } from 'tsyringe';
 import { WiFiManagerService } from './services/wifi-manager.service';
 import { GpioService } from './services/gpio.service';
 import { StateService } from './services/state.service';
-import { AppState, ProvisioningState, BleState } from './models/state.model';
+import { AppState, ProvisioningState, BleState, SystemMode } from './models/state.model';
 import {
   SsidCharacteristic,
   PasswordCharacteristic,
@@ -16,6 +16,10 @@ import {
 import { CONFIG, LED_CONFIG } from './config/app.config';
 import { ScanNetworksCharacteristic } from './characteristics/scan-networks.characteristic';
 import { NetworkListCharacteristic } from './characteristics/network-list.characteristic';
+import { exec } from 'child_process';
+import util from 'util';
+
+const execPromise = util.promisify(exec);
 
 /**
  * Application Bootstrap Class
@@ -28,6 +32,8 @@ class BeatnikApplication {
   private provisioningTimer: NodeJS.Timeout | null = null;
   private readonly PROVISIONING_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
   private isStopping = false;
+  private pendingActionTimer: NodeJS.Timeout | null = null;
+  private readonly PENDING_ACTION_TIMEOUT_MS = 30 * 1000; // 30 seconds
 
   constructor() {}
 
@@ -288,8 +294,26 @@ class BeatnikApplication {
   private setupButtonHandler(): void {
     const wifiManager = container.resolve(WiFiManagerService);
 
-    // Short Press: Show Connection State
+    // Short Press
     this.gpioService.on('button_click', async () => {
+      const mode = this.stateService.state.systemMode;
+
+      if (mode === SystemMode.PENDING_ACTION) {
+        console.log('🔘 Short press in PENDING_ACTION. Proceeding to Restart.');
+        this.clearPendingActionTimer();
+        this.applyLedPattern('RESTARTING');
+        
+        setTimeout(async () => {
+          try {
+            await execPromise('sudo reboot');
+          } catch (e) {
+            console.error('Failed to trigger restart:', e);
+          }
+        }, 1000); // 1-second delay for the LED to blink
+
+        return;
+      }
+
       console.log('🔘 Button Click! Checking and showing connection state...');
       
       // Force a live check of the connection status
@@ -309,8 +333,41 @@ class BeatnikApplication {
       }, 3000);
     });
 
-    // Long Press: Start BLE Provisioning
-    this.gpioService.on('button_long_press', () => {
+    // Long Press
+    this.gpioService.on('button_long_press', (duration: number) => {
+      const mode = this.stateService.state.systemMode;
+
+      if (duration >= 10 && mode === SystemMode.NORMAL) {
+        console.log(`⏱️ Extremely Long Press (${duration}s)! Entering Pending Action mode for Restart/Reset...`);
+        this.stateService.updateSystemMode(SystemMode.PENDING_ACTION);
+        this.startPendingActionTimer();
+        this.applyLedPattern('PENDING_ACTION');
+        return;
+      }
+
+      if (mode === SystemMode.PENDING_ACTION) {
+        if (duration >= 5) {
+          console.log(`⏱️ Long press in PENDING_ACTION (${duration}s). Proceeding to Reset.`);
+          this.clearPendingActionTimer();
+          this.applyLedPattern('RESETTING');
+
+          setTimeout(async () => {
+            try {
+              // Delete all NetworkManager connections of type wifi
+              await execPromise("nmcli --terse --fields UUID,TYPE connection show | grep 802-11-wireless | cut -d: -f1 | xargs -r nmcli connection delete");
+              console.log('✅ Wiped WiFi credentials');
+              await execPromise('sudo reboot');
+            } catch (e) {
+              console.error('Failed to wipe credentials or reboot:', e);
+            }
+          }, 1000); // 1-second delay for the LED to blink
+        } else {
+          console.log('⚠️ Long press in PENDING_ACTION but duration < 5s. Ignoring.');
+        }
+        return;
+      }
+
+      // Default behavior (normal mode, long press < 10)
       console.log('🎉 Button Long Press! Starting WiFi Provisioning Service...');
       
       this.isStopping = false;
@@ -330,6 +387,22 @@ class BeatnikApplication {
         console.log('⚠️  Cannot start advertising: Bluetooth not powered on.');
       }
     });
+  }
+
+  private startPendingActionTimer(): void {
+    this.clearPendingActionTimer();
+    this.pendingActionTimer = setTimeout(() => {
+      console.log('⏰ Pending action timed out. Returning to normal behavior.');
+      this.stateService.updateSystemMode(SystemMode.NORMAL);
+      this.applyLedPattern('OFF');
+    }, this.PENDING_ACTION_TIMEOUT_MS);
+  }
+
+  private clearPendingActionTimer(): void {
+    if (this.pendingActionTimer) {
+      clearTimeout(this.pendingActionTimer);
+      this.pendingActionTimer = null;
+    }
   }
 
   /**

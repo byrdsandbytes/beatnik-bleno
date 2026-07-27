@@ -41,11 +41,11 @@ export class GpioService extends EventEmitter {
           switch (event.event) {
             case 'button_click':
               console.log('🔘 Button Click detected!');
-              this.emit('button_click');
+              this.emit('button_click', event.duration);
               break;
             case 'button_long_press':
-              console.log('⏳ Button Long Press detected!');
-              this.emit('button_long_press');
+              console.log(`⏳ Button Long Press detected! (${event.duration}s)`);
+              this.emit('button_long_press', event.duration);
               break;
             case 'button_pressed': // Legacy/Fallback
               console.log('🔘 Button press detected!');
