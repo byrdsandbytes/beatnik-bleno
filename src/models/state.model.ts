@@ -16,10 +16,16 @@ export enum BleState {
   UNKNOWN = 'unknown',
 }
 
+export enum SystemMode {
+  NORMAL = 'normal',
+  PENDING_ACTION = 'pending_action',
+}
+
 export interface AppState {
   wifiStatus: WiFiStatus;
   provisioning: ProvisioningState;
   ble: BleState;
+  systemMode: SystemMode;
   lastError: string | null;
 }
 
@@ -34,5 +40,6 @@ export const INITIAL_STATE: AppState = {
   },
   provisioning: ProvisioningState.IDLE,
   ble: BleState.UNKNOWN,
+  systemMode: SystemMode.NORMAL,
   lastError: null,
 };

@@ -1,6 +1,6 @@
 import { singleton } from 'tsyringe';
 import { EventEmitter } from 'events';
-import { AppState, INITIAL_STATE, ProvisioningState, BleState } from '../models/state.model';
+import { AppState, INITIAL_STATE, ProvisioningState, BleState, SystemMode } from '../models/state.model';
 import { WiFiStatus } from '../models/wifi.model';
 
 @singleton()
@@ -45,6 +45,17 @@ export class StateService extends EventEmitter {
   public updateBleState(state: BleState): void {
     if (this._state.ble !== state) {
       this._state.ble = state;
+      this.emitStateChange();
+    }
+  }
+
+  /**
+   * Update System Mode
+   * @param mode SystemMode
+   */
+  public updateSystemMode(mode: SystemMode): void {
+    if (this._state.systemMode !== mode) {
+      this._state.systemMode = mode;
       this.emitStateChange();
     }
   }

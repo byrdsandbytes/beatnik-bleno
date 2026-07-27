@@ -208,8 +208,9 @@ export class WiFiManagerService extends EventEmitter {
           // Ignore error if connection doesn't exist
       }
 
-      await this.execCommand(
-        `nmcli device wifi connect ${ssidArg} password ${passArg}`
+      await this.execSensitiveCommand(
+        `nmcli device wifi connect ${ssidArg} password ${passArg}`,
+        [passArg, credentials.password]
       );
       return;
     } catch (nmcliError) {
@@ -234,8 +235,9 @@ export class WiFiManagerService extends EventEmitter {
                   await this.execCommand(`nmcli connection delete id ${ssidArg}`);
               } catch (e) { /* ignore */ }
 
-              await this.execCommand(
-                `nmcli device wifi connect ${ssidArg} password ${passArg}`
+              await this.execSensitiveCommand(
+                `nmcli device wifi connect ${ssidArg} password ${passArg}`,
+                [passArg, credentials.password]
               );
               return;
           } catch (retryError) {
@@ -264,7 +266,7 @@ export class WiFiManagerService extends EventEmitter {
   private async connectMacOS(credentials: WiFiCredentials): Promise<void> {
     try {
       const command = `networksetup -setairportnetwork en0 "${credentials.ssid}" "${credentials.password}"`;
-      await this.execCommand(command);
+      await this.execSensitiveCommand(command, [credentials.password]);
     } catch (error) {
       console.error('Error connecting on macOS:', error);
       throw error;
@@ -379,6 +381,28 @@ export class WiFiManagerService extends EventEmitter {
     
     // Emit event for backward compatibility
     this.emit('status-update', this.stateService.state.wifiStatus);
+  }
+
+  /**
+   * Execute a sensitive shell command and redact secrets from error messages
+   */
+  private async execSensitiveCommand(command: string, secrets: string[] = []): Promise<string> {
+    try {
+      return await this.execCommand(command);
+    } catch (error: any) {
+      if (error && error.message) {
+        let message = error.message;
+        for (const secret of secrets) {
+          if (secret) {
+            // Escape special regex characters
+            const escapedSecret = secret.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            message = message.replace(new RegExp(escapedSecret, 'g'), '******');
+          }
+        }
+        error.message = message;
+      }
+      throw error;
+    }
   }
 
   /**
