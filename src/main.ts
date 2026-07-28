@@ -357,7 +357,7 @@ class BeatnikApplication {
               await execPromise("nmcli --terse --fields UUID,TYPE connection show | grep 802-11-wireless | cut -d: -f1 | xargs -r nmcli connection delete");
               console.log('✅ Wiped WiFi credentials');
               // enable snapcast server 
-              await execPromise('sudo systemctl enable snapcastserver');
+              await execPromise('sudo systemctl enable snapserver');
               console.log('✅ Enabled Snapcast server');
               await execPromise('sudo reboot');
             } catch (e) {
