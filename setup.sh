@@ -77,7 +77,24 @@ nvm use 22
 echo "📦 Installing production dependencies..."
 npm install --omit=dev
 
-# 7. Configure systemd service
+# 7. Configure Startup LED
+echo "💡 Configuring startup LEDs..."
+CONFIG_FILE="/boot/firmware/config.txt"
+if [ ! -f "$CONFIG_FILE" ]; then
+    CONFIG_FILE="/boot/config.txt"
+fi
+
+if grep -q "gpio=27,24=op,dl" "$CONFIG_FILE"; then
+    echo "   GPIO configuration already exists in $CONFIG_FILE"
+else
+    echo "   Appending GPIO configuration to $CONFIG_FILE..."
+    echo "" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    echo "[all]" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    echo "gpio=27,24=op,dl" | sudo tee -a "$CONFIG_FILE" > /dev/null
+    echo "gpio=17=op,dh" | sudo tee -a "$CONFIG_FILE" > /dev/null
+fi
+
+# 8. Configure systemd service
 echo "⚙️  Configuring systemd service..."
 
 NODE_PATH=$(which node)
