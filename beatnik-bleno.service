@@ -5,7 +5,7 @@ After=network.target bluetooth.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/pi/beatnik-bleno
+WorkingDirectory=/home/beatnik/beatnik-bleno
 ExecStart=/usr/bin/node dist/main.js
 Restart=always
 RestartSec=10
