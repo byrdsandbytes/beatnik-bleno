@@ -28,7 +28,7 @@ A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi and othe
 
 ## Installation
 
-### 🚀 Quick Start (Recommended)
+### Quick Start (Recommended)
 
 We provide an automated installation script that handles system dependencies, Node.js (via nvm), and sets up the systemd service for you.
 

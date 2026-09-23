@@ -3,7 +3,7 @@
 # Exit on error
 set -e
 
-echo "🥦 Setting up Beatnik Bleno Service (Production Release)..."
+echo "==> Setting up Beatnik Bleno Service (Production Release)..."
 
 SERVICE_NAME="beatnik-bleno.service"
 INSTALL_DIR="$HOME/beatnik-bleno"
@@ -11,17 +11,17 @@ REPO="byrdsandbytes/beatnik-bleno"
 
 # 1. Stop existing service if running
 if systemctl is-active --quiet $SERVICE_NAME; then
-    echo "🛑 Stopping existing service..."
+    echo "-> Stopping existing service..."
     sudo systemctl stop $SERVICE_NAME
 fi
 
 # 2. Install System Dependencies (needed for Bleno and downloading)
-echo "📦 Installing system dependencies..."
+echo "==> Installing system dependencies..."
 sudo apt-get update
 sudo apt-get install -y bluetooth bluez libudev-dev libusb-1.0-0-dev network-manager isc-dhcp-client curl build-essential jq
 
 # Unblock Bluetooth and WiFi
-echo "🔓 Unblocking Bluetooth and WiFi..."
+echo "-> Unblocking Bluetooth and WiFi..."
 sudo rfkill unblock bluetooth
 sudo rfkill unblock wifi
 
@@ -32,28 +32,28 @@ if ip link show wlan0 > /dev/null 2>&1; then
 fi
 
 # 3. Create Install Directory
-echo "📁 Creating installation directory..."
+echo "==> Creating installation directory..."
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
 # 4. Fetch the latest release artifact from GitHub
-echo "⬇️  Downloading latest release from GitHub..."
+echo "==> Downloading latest release from GitHub..."
 ASSET_URL=$(curl -s https://api.github.com/repos/$REPO/releases/latest | jq -r '.assets[] | select(.name=="beatnik-bleno.tar.gz") | .browser_download_url')
 
 if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" == "null" ]; then
-    echo "❌ Failed to find release asset beatnik-bleno.tar.gz on GitHub."
+    echo "ERROR: Failed to find release asset beatnik-bleno.tar.gz on GitHub."
     exit 1
 fi
 
 curl -L -o beatnik-bleno.tar.gz "$ASSET_URL"
 
 # Extract
-echo "📦 Extracting..."
+echo "-> Extracting..."
 tar -xzf beatnik-bleno.tar.gz
 rm beatnik-bleno.tar.gz
 
 # 5. Setup Node.js via NVM
-echo "🟢 Setting up Node.js (NVM)..."
+echo "==> Setting up Node.js (NVM)..."
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
@@ -64,7 +64,7 @@ fi
 if [ -s "$NVM_DIR/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh" --no-use
 else
-  echo "❌ Failed to locate nvm.sh"
+  echo "ERROR: Failed to locate nvm.sh"
   exit 1
 fi
 
@@ -73,11 +73,11 @@ nvm install 22
 nvm use 22
 
 # 6. Install production dependencies
-echo "📦 Installing production dependencies..."
+echo "==> Installing production dependencies..."
 npm install --omit=dev
 
 # 7. Configure Startup LED
-echo "💡 Configuring startup LEDs..."
+echo "==> Configuring startup LEDs..."
 CONFIG_FILE="/boot/firmware/config.txt"
 if [ ! -f "$CONFIG_FILE" ]; then
     CONFIG_FILE="/boot/config.txt"
@@ -94,7 +94,7 @@ else
 fi
 
 # 8. Configure systemd service
-echo "⚙️  Configuring systemd service..."
+echo "==> Configuring systemd service..."
 
 NODE_PATH=$(which node)
 
@@ -111,9 +111,9 @@ rm $INSTALL_DIR/beatnik-bleno.service.tmp
 sudo systemctl daemon-reload
 sudo systemctl enable $SERVICE_NAME
 
-echo "🚀 Starting service..."
+echo "-> Starting service..."
 sudo systemctl restart $SERVICE_NAME
 
-echo "✅ Setup complete! The service is now running in the background."
+echo "Setup complete. The service is now running in the background."
 echo "   Check status with: sudo systemctl status $SERVICE_NAME"
 echo "   View logs with: sudo journalctl -u $SERVICE_NAME -f"
