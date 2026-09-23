@@ -6,7 +6,7 @@ There are two primary ways to install the service. **Method 1 (Production Releas
 
 ---
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before you begin, ensure your Raspberry Pi meets the following requirements:
 - **OS:** Raspberry Pi OS (Bookworm or newer recommended)
@@ -28,7 +28,7 @@ nvm use 22
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Method 1: Production Setup Script (Recommended)
 We provide an automated setup script that downloads the latest pre-built release artifact, installs dependencies, and configures the systemd service. This is the cleanest way to run the service in production.
@@ -83,7 +83,7 @@ sudo systemctl start beatnik-bleno.service
 
 ---
 
-## 🔄 Updating the Service
+## Updating the Service
 
 To make future updates completely seamless, the `setup.sh` script is designed to also act as an updater. 
 
@@ -103,7 +103,7 @@ cd ~/beatnik-bleno
 
 ---
 
-## 🛠 Checking Service Status
+## Checking Service Status
 
 Regardless of which method you chose, you can always check if the service is running smoothly via:
 ```bash
