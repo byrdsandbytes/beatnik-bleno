@@ -6,7 +6,7 @@ set -e
 echo "🥦 Setting up Beatnik Bleno Service (Production Release)..."
 
 SERVICE_NAME="beatnik-bleno.service"
-INSTALL_DIR="/opt/beatnik-bleno"
+INSTALL_DIR="$HOME/beatnik-bleno"
 REPO="byrdsandbytes/beatnik-bleno"
 
 # 1. Stop existing service if running
@@ -33,8 +33,7 @@ fi
 
 # 3. Create Install Directory
 echo "📁 Creating installation directory..."
-sudo mkdir -p $INSTALL_DIR
-sudo chown -R $USER:$USER $INSTALL_DIR
+mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
 # 4. Fetch the latest release artifact from GitHub

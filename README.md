@@ -386,7 +386,7 @@ The easiest way to deploy the service on a Raspberry Pi is using the included in
 
 ### Option 1: Automated Installation (Recommended)
 
-1.  **Clone the repository** to your Raspberry Pi (e.g., in `/home/pi/beatnik-bleno`).
+1.  **Clone the repository** to your Raspberry Pi (e.g., in `/home/beatnik/beatnik-bleno`).
 2.  **Run the install script**:
     ```bash
     chmod +x install.sh
@@ -408,8 +408,8 @@ If you prefer to set it up manually:
     ```ini
     [Service]
     ...
-    WorkingDirectory=/home/pi/beatnik-bleno
-    ExecStart=/usr/bin/node /home/pi/beatnik-bleno/dist/main.js
+    WorkingDirectory=/home/beatnik/beatnik-bleno
+    ExecStart=/usr/bin/node /home/beatnik/beatnik-bleno/dist/main.js
     ...
     ```
     *Note: If using nvm, find your node path with `which node` and use that absolute path.*
