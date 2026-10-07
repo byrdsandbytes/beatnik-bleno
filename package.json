@@ -10,7 +10,7 @@
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pack-pi": "npm run build && tar -czvf beatnik-bleno.tar.gz dist package.json package-lock.json install.sh beatnik-bleno.service"
+    "pack-pi": "npm run build && tar -czvf beatnik-bleno.tar.gz dist package.json package-lock.json setup.sh beatnik-bleno.service"
   },
   "keywords": [
     "bleno",
