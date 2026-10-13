@@ -431,37 +431,75 @@ export class WiFiManagerService extends EventEmitter {
   }
 
   /**
-   * Scan for available networks (optional feature)
+   * Scan for available networks, retrying since a fresh rescan often
+   * returns an empty/stale list before the radio finishes updating.
    */
-  public scanNetworks(): void {
+  public async scanNetworks(): Promise<void> {
     console.log('Starting WiFi network scan...');
     this.stateService.updateProvisioningState(ProvisioningState.SCANNING);
     this.emit('scan-started');
-    // Use nmcli to scan for networks. -t for terse, -f for fields.
-    // --rescan yes forces a new scan.
-    const command = `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes`;
 
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error scanning for networks: ${error.message}`);
-        this.emit('error', new Error('Failed to scan for networks.'));
-        this.stateService.updateProvisioningState(ProvisioningState.IDLE); // Go back to idle or error?
-        return;
+    const maxAttempts = 3;
+    let networks: Network[] = [];
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Force a rescan only on the first attempt; later attempts just re-read
+        // the cached list since another rescan this soon would be ignored/fail.
+        const rescan = attempt === 1 ? 'yes' : 'no';
+        const command = `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan ${rescan}`;
+        const { stdout, stderr } = await this.execCommandWithStderr(command);
+
+        if (stderr) {
+          // nmcli can print warnings to stderr, so we log but don't treat as a fatal error.
+          console.warn(`Warning during network scan: ${stderr}`);
+        }
+
+        networks = this.parseNmcliOutput(stdout);
+        console.log(`Scan attempt ${attempt}/${maxAttempts}: found ${networks.length} unique networks.`);
+
+        if (networks.length > 0) {
+          break;
+        }
+
+        if (attempt < maxAttempts) {
+          // Give the WiFi radio time to populate the scan cache before retrying.
+          await this.sleep(5000);
+        }
+      } catch (error) {
+        console.error(`Error scanning for networks (attempt ${attempt}/${maxAttempts}): ${(error as Error).message}`);
+        if (attempt === maxAttempts) {
+          this.emit('error', new Error('Failed to scan for networks.'));
+          this.stateService.updateProvisioningState(ProvisioningState.IDLE);
+          return;
+        }
+        await this.sleep(2000);
       }
-      if (stderr) {
-        // nmcli can print warnings to stderr, so we log but don't treat as a fatal error.
-        console.warn(`Warning during network scan: ${stderr}`);
-      }
+    }
 
-      const networks = this.parseNmcliOutput(stdout);
-      console.log(`Found ${networks.length} unique networks.`);
+    if (networks.length === 0) {
+      await this.checkPossibleScanIssues();
+    }
 
-      if (networks.length === 0) {
-        this.checkPossibleScanIssues();
-      }
+    this.stateService.updateProvisioningState(ProvisioningState.IDLE);
+    this.emit('networks-found', networks);
+  }
 
-      this.stateService.updateProvisioningState(ProvisioningState.IDLE);
-      this.emit('networks-found', networks);
+  /**
+   * Execute a shell command, returning both stdout and stderr instead of discarding stderr.
+   */
+  private execCommandWithStderr(command: string): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          if (stderr) {
+            error.message += ` (stderr: ${stderr.trim()})`;
+          }
+          reject(error);
+          return;
+        }
+        resolve({ stdout, stderr });
+      });
     });
   }
 
