@@ -38,8 +38,11 @@ export enum ConnectionState {
   DISCONNECTED = 'disconnected'
 }
 
+export type WiFiBand = '2.4GHz' | '5GHz' | '6GHz' | 'unknown';
+
 export interface Network {
   ssid: string;
   quality: number;
   security: string;
+  band: WiFiBand;
 }

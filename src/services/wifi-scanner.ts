@@ -64,7 +64,7 @@ export class WiFiScanner {
 
   private async readCache(): Promise<Network[]> {
     const output = await run('nmcli', [
-      '-t', '-f', 'SSID,SIGNAL,SECURITY',
+      '-t', '-f', 'SSID,SIGNAL,SECURITY,FREQ',
       'device', 'wifi', 'list',
       'ifname', this.iface,
       '--rescan', 'no',
