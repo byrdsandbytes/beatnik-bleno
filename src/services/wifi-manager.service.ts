@@ -449,7 +449,8 @@ export class WiFiManagerService extends EventEmitter {
         const rescan = attempt === 1 ? 'yes' : 'no';
         const command = `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan ${rescan}`;
         const { stdout, stderr } = await this.execCommandWithStderr(command);
-
+        // sleep for 5 seconds to allow the WiFi radio to update its scan results
+        await this.sleep(5000);
         if (stderr) {
           // nmcli can print warnings to stderr, so we log but don't treat as a fatal error.
           console.warn(`Warning during network scan: ${stderr}`);
