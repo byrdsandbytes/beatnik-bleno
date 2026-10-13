@@ -483,6 +483,7 @@ export class WiFiManagerService extends EventEmitter {
     }
 
     this.stateService.updateProvisioningState(ProvisioningState.IDLE);
+    console.log(`Found ${networks} networks.`);
     this.emit('networks-found', networks);
   }
 
