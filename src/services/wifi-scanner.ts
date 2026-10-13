@@ -4,7 +4,7 @@ import { run, sleep } from '../utils/shell.util';
 
 const POLL_INTERVAL_MS = 1500;
 const SCAN_WINDOW_MS = 12_000;
-const MIN_SCAN_MS = 5000;
+const MIN_SCAN_MS = 2000;
 // Consecutive polls with no new SSIDs before the scan counts as settled.
 const STABLE_POLLS = 2;
 const STALE_RESULT_MAX_AGE_MS = 5 * 60_000;
