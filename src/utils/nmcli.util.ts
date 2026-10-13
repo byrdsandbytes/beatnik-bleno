@@ -1,4 +1,13 @@
-import { Network } from '../models/wifi.model';
+import { Network, WiFiBand } from '../models/wifi.model';
+
+/** Map a frequency in MHz (nmcli prints e.g. "5180 MHz") to a band. */
+export function bandFromFrequency(frequency: string): WiFiBand {
+  const mhz = parseInt(frequency, 10);
+  if (mhz >= 2400 && mhz < 2500) return '2.4GHz';
+  if (mhz >= 4900 && mhz < 5925) return '5GHz';
+  if (mhz >= 5925 && mhz <= 7125) return '6GHz';
+  return 'unknown';
+}
 
 /** Split one line of `nmcli -t` output on unescaped colons, resolving `\:` and `\\`. */
 export function splitTerse(line: string): string[] {
@@ -20,14 +29,14 @@ export function splitTerse(line: string): string[] {
   return fields;
 }
 
-/** Parse `nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list` output. Hidden networks are skipped. */
+/** Parse `nmcli -t -f SSID,SIGNAL,SECURITY,FREQ dev wifi list` output. Hidden networks are skipped. */
 export function parseNetworks(output: string): Network[] {
   const networks = new Map<string, Network>();
 
   for (const line of output.split('\n')) {
     if (!line.trim()) continue;
 
-    const [ssid, signal = '', security = ''] = splitTerse(line);
+    const [ssid, signal = '', security = '', frequency = ''] = splitTerse(line);
     if (!ssid) continue;
 
     mergeNetworks(networks, [
@@ -35,6 +44,7 @@ export function parseNetworks(output: string): Network[] {
         ssid,
         quality: parseInt(signal, 10) || 0,
         security: security.trim() === '' || security.trim() === '--' ? 'None' : security.trim(),
+        band: bandFromFrequency(frequency),
       },
     ]);
   }
