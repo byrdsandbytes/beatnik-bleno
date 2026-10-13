@@ -4,6 +4,7 @@ import { run, sleep } from '../utils/shell.util';
 
 const POLL_INTERVAL_MS = 1500;
 const SCAN_WINDOW_MS = 12_000;
+const MIN_SCAN_MS = 5000;
 // Consecutive polls with no new SSIDs before the scan counts as settled.
 const STABLE_POLLS = 2;
 const STALE_RESULT_MAX_AGE_MS = 5 * 60_000;
@@ -24,9 +25,10 @@ export class WiFiScanner {
     // A failure here means nmcli/NetworkManager is unusable, so let it propagate.
     mergeNetworks(found, await this.readCache());
 
+    const startedAt = Date.now();
     await this.requestRescan();
 
-    const deadline = Date.now() + SCAN_WINDOW_MS;
+    const deadline = startedAt + SCAN_WINDOW_MS;
     let stablePolls = 0;
 
     while (Date.now() < deadline) {
@@ -41,7 +43,7 @@ export class WiFiScanner {
       }
 
       stablePolls = found.size > 0 && found.size === sizeBefore ? stablePolls + 1 : 0;
-      if (stablePolls >= STABLE_POLLS) break;
+      if (stablePolls >= STABLE_POLLS && Date.now() - startedAt >= MIN_SCAN_MS) break;
     }
 
     const networks = Array.from(found.values()).sort((a, b) => b.quality - a.quality);
