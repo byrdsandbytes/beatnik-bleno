@@ -16,7 +16,7 @@ A Bluetooth Low Energy (BLE) WiFi provisioning service for Raspberry Pi, built w
 
 ## Installation
 
-For Raspberry Pi deployment (production release or from source), see [INSTALL.md](INSTALL.md).
+For Raspberry Pi deployment (production release or from source), see [INSTALL_DEB.md](INSTALL_DEB.md) for the `.deb` package (recommended; update with [UPDATE_DEB.md](UPDATE_DEB.md), remove with [UNINSTALL_DEB.md](UNINSTALL_DEB.md)) or [INSTALL.md](INSTALL.md) for the script/source methods.
 
 For local development:
 

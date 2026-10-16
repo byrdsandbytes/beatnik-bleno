@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+if [ "$1" = "remove" ] || [ "$1" = "upgrade" ]; then
+    systemctl stop beatnik-bleno.service || true
+fi
+if [ "$1" = "remove" ]; then
+    systemctl disable beatnik-bleno.service || true
+fi
+exit 0

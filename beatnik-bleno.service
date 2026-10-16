@@ -5,8 +5,8 @@ After=network.target bluetooth.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/beatnik/beatnik-bleno
-ExecStart=/usr/bin/node dist/main.js
+WorkingDirectory=/opt/beatnik-bleno
+ExecStart=/usr/bin/node /opt/beatnik-bleno/dist/main.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production

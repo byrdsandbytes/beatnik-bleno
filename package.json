@@ -9,8 +9,7 @@
     "dev": "ts-node src/main.ts",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "pack-pi": "npm run build && tar -czvf beatnik-bleno.tar.gz dist package.json package-lock.json setup.sh beatnik-bleno.service"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "bleno",
@@ -21,8 +20,8 @@
     "raspberry-pi",
     "typescript"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "Jonathan Gerber",
+  "license": "aGPLv3",
   "dependencies": {
     "@abandonware/bleno": "^0.6.0",
     "reflect-metadata": "^0.1.13",
