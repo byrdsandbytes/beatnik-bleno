@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    CONFIG_FILE="/boot/firmware/config.txt"
+    [ -f "$CONFIG_FILE" ] || CONFIG_FILE="/boot/config.txt"
+    if [ -f "$CONFIG_FILE" ] && ! grep -q "gpio=27,24=op,dl" "$CONFIG_FILE"; then
+        printf '\n[all]\ngpio=27,24=op,dl\ngpio=17=op,dh\n' >> "$CONFIG_FILE"
+    fi
+
+    rfkill unblock bluetooth || true
+    rfkill unblock wifi || true
+
+    systemctl daemon-reload
+    systemctl enable beatnik-bleno.service
+    systemctl restart beatnik-bleno.service
+fi
+exit 0
