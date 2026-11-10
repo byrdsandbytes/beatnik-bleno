@@ -20,6 +20,32 @@ export class WiFiScanner {
   constructor(private readonly iface: string) {}
 
   public async scan(): Promise<Network[]> {
+    await this.ensureRadioEnabled();
+    let networks = await this.scanOnce();
+
+    if (networks.length === 0) {
+      // On a never-configured device the radio is often soft-blocked or the interface is down.
+      console.warn('WiFi scan returned no networks, attempting radio recovery and retrying.');
+      await this.ensureRadioEnabled();
+      await sleep(1000);
+      networks = await this.scanOnce();
+    }
+
+    if (networks.length > 0) {
+      this.lastResult = { networks, at: Date.now() };
+      return networks;
+    }
+
+    // The driver sometimes returns nothing while busy; a recent list beats an empty one.
+    if (this.lastResult && Date.now() - this.lastResult.at < STALE_RESULT_MAX_AGE_MS) {
+      console.warn('WiFi scan returned no networks, falling back to the previous result.');
+      return this.lastResult.networks;
+    }
+
+    return [];
+  }
+
+  private async scanOnce(): Promise<Network[]> {
     const found = new Map<string, Network>();
 
     // A failure here means nmcli/NetworkManager is unusable, so let it propagate.
@@ -46,20 +72,7 @@ export class WiFiScanner {
       if (stablePolls >= STABLE_POLLS && Date.now() - startedAt >= MIN_SCAN_MS) break;
     }
 
-    const networks = Array.from(found.values()).sort((a, b) => b.quality - a.quality);
-
-    if (networks.length > 0) {
-      this.lastResult = { networks, at: Date.now() };
-      return networks;
-    }
-
-    // The driver sometimes returns nothing while busy; a recent list beats an empty one.
-    if (this.lastResult && Date.now() - this.lastResult.at < STALE_RESULT_MAX_AGE_MS) {
-      console.warn('WiFi scan returned no networks, falling back to the previous result.');
-      return this.lastResult.networks;
-    }
-
-    return [];
+    return Array.from(found.values()).sort((a, b) => b.quality - a.quality);
   }
 
   private async readCache(): Promise<Network[]> {
@@ -70,6 +83,22 @@ export class WiFiScanner {
       '--rescan', 'no',
     ]);
     return parseNetworks(output);
+  }
+
+  private async ensureRadioEnabled(): Promise<void> {
+    const attempts: Array<[string, string[]]> = [
+      ['rfkill', ['unblock', 'wifi']],
+      ['nmcli', ['radio', 'wifi', 'on']],
+      ['nmcli', ['device', 'set', this.iface, 'managed', 'yes']],
+    ];
+    for (const [file, args] of attempts) {
+      try {
+        await run(file, args);
+      } catch (error) {
+        // Best effort: tools may be missing, or the device may already be connected/enabled.
+        console.log(`WiFi radio prep "${file} ${args.join(' ')}" skipped: ${(error as Error).message}`);
+      }
+    }
   }
 
   private async requestRescan(): Promise<void> {
